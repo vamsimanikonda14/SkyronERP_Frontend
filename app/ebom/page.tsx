@@ -23,6 +23,10 @@ export default function EbomPage() {
   const [bomData, setBomData] = useState<BomItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
+  const [sortedData, setSortedData] = useState<BomItem[]>([])
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const router = useRouter()
 
   useEffect(() => {
@@ -50,6 +54,7 @@ export default function EbomPage() {
 
         if (Array.isArray(data.bomData)) {
           setBomData(data.bomData)
+          setSortedData(data.bomData)  // Initialize with fetched data
         } else {
           console.error("Expected an array of BOM data, but received:", data.bomData)
           setError("Invalid data format received from server")
@@ -64,6 +69,25 @@ export default function EbomPage() {
 
     fetchBomData()
   }, [router])
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = sortedData.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Handle page change
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber)
+
+  // Handle sorting
+  const handleSort = () => {
+    const sorted = [...bomData].sort((a, b) => {
+      const dateA = new Date(a.revision) // Assuming revision or another field is date-like
+      const dateB = new Date(b.revision)
+      return sortOrder === "asc" ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime()
+    })
+    setSortedData(sorted)
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+  }
 
   return (
     <DashboardLayout>
@@ -81,7 +105,11 @@ export default function EbomPage() {
                 <tr>
                   <th className="bg-[#f79c34] text-white p-3 text-left">Type</th>
                   <th className="bg-[#f79c34] text-white p-3 text-left">Name</th>
-                  <th className="bg-[#f79c34] text-white p-3 text-left">Revision</th>
+                  <th className="bg-[#f79c34] text-white p-3 text-left">Revision
+                    <button onClick={handleSort} className="ml-2">
+                      {sortOrder === "asc" ? "↑" : "↓"}
+                    </button>
+                  </th>
                   <th className="bg-[#f79c34] text-white p-3 text-left">Part Number</th>
                   <th className="bg-[#f79c34] text-white p-3 text-left">Description</th>
                   <th className="bg-[#f79c34] text-white p-3 text-left">Quantity Required</th>
@@ -94,14 +122,14 @@ export default function EbomPage() {
                 </tr>
               </thead>
               <tbody>
-                {bomData.length === 0 ? (
+                {currentItems.length === 0 ? (
                   <tr>
                     <td colSpan={12} className="text-center py-4">
                       No EBOM data found
                     </td>
                   </tr>
                 ) : (
-                  bomData.map((item, index) => (
+                  currentItems.map((item, index) => (
                     <tr key={index} className="hover:bg-gray-100">
                       <td className="border-b p-3">{item.type}</td>
                       <td className="border-b p-3">{item.name}</td>
@@ -120,10 +148,27 @@ export default function EbomPage() {
                 )}
               </tbody>
             </table>
+            {/* Pagination controls */}
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 bg-gray-300 rounded-l-md"
+              >
+                Prev
+              </button>
+              <span className="p-2">{currentPage}</span>
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage * itemsPerPage >= bomData.length}
+                className="p-2 bg-gray-300 rounded-r-md"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
     </DashboardLayout>
   )
 }
-
