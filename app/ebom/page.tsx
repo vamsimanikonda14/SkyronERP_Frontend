@@ -24,7 +24,7 @@ export default function EbomPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
+  const [itemsPerPage] = useState(5)
   const [sortedData, setSortedData] = useState<BomItem[]>([])
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const router = useRouter()
