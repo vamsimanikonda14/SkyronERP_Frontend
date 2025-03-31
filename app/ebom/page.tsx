@@ -24,7 +24,7 @@ export default function EbomPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(5)
+  const [itemsPerPage] = useState(10)
   const [sortedData, setSortedData] = useState<BomItem[]>([])
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const router = useRouter()
@@ -131,18 +131,18 @@ export default function EbomPage() {
                 ) : (
                   currentItems.map((item, index) => (
                     <tr key={index} className="hover:bg-gray-100">
-                      <td className="border-b p-3">{item.type}</td>
-                      <td className="border-b p-3">{item.name}</td>
-                      <td className="border-b p-3">{item.revision}</td>
-                      <td className="border-b p-3">{item.partNumber}</td>
-                      <td className="border-b p-3">{item.description}</td>
-                      <td className="border-b p-3">{item.quantityRequired}</td>
-                      <td className="border-b p-3">{item.stockLevel}</td>
-                      <td className="border-b p-3">{item.supplierInfo}</td>
-                      <td className="border-b p-3">{item.partWeight}</td>
-                      <td className="border-b p-3">{item.uom}</td>
-                      <td className="border-b p-3">{item.manufacturingInfo}</td>
-                      <td className="border-b p-3">{item.inventoryLocation}</td>
+                      <td className="border-b p-4">{item.type}</td>
+                      <td className="border-b p-4">{item.name}</td>
+                      <td className="border-b p-4">{item.revision}</td>
+                      <td className="border-b p-4">{item.partNumber}</td>
+                      <td className="border-b p-4">{item.description}</td>
+                      <td className="border-b p-4">{item.quantityRequired}</td>
+                      <td className="border-b p-4">{item.stockLevel}</td>
+                      <td className="border-b p-4">{item.supplierInfo}</td>
+                      <td className="border-b p-4">{item.partWeight}</td>
+                      <td className="border-b p-4">{item.uom}</td>
+                      <td className="border-b p-4">{item.manufacturingInfo}</td>
+                      <td className="border-b p-4">{item.inventoryLocation}</td>
                     </tr>
                   ))
                 )}
