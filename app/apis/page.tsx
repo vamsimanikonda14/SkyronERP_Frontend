@@ -48,7 +48,7 @@ export default function ApisPage() {
             {
               name: "SignUp Api",
               category: "user",
-              url: "http://localhost:5000/api/auth/signup",
+              url: https://skyronerp.onrender.com/api/auth/signup",
               method: "POST",
               payload:
                 '{"fullname": "your Full Name", "email": "user email for signup", "password": "password for signup"}',
@@ -58,7 +58,7 @@ export default function ApisPage() {
             {
               name: "user Login API",
               category: "user",
-              url: "http://localhost:5000/api/auth/login",
+              url: https://skyronerp.onrender.com/api/auth/login",
               method: "POST",
               payload: '{"email": "user email for login", "password": "password for login"}',
               response:
@@ -68,7 +68,7 @@ export default function ApisPage() {
             {
               name: "Get particular user",
               category: "user",
-              url: "http://localhost:5000/api/auth/profile/${id}",
+              url: https://skyronerp.onrender.com/api/auth/profile/${id}",
               method: "GET",
               payload: null,
               response: '{"user": {"email": "user email id", "fullname": "user password"}}',
@@ -77,7 +77,7 @@ export default function ApisPage() {
             {
               name: "Update User",
               category: "user",
-              url: "http://localhost:5000/api/auth/update/${id}",
+              url: https://skyronerp.onrender.com/api/auth/update/${id}",
               method: "PUT",
               payload: '{"---update user data---"}',
               response: '{"success": true, "message": "User updated successfully"}',
@@ -86,7 +86,7 @@ export default function ApisPage() {
             {
               name: "List All users",
               category: "user",
-              url: "http://localhost:5000/api/auth/users",
+              url: https://skyronerp.onrender.com/api/auth/users",
               method: "GET",
               payload: "N/A",
               response: '{"users": [{"_id": "user id", "email": "user email", "fullname": "user fullname", "__v": 0}]}',
@@ -95,7 +95,7 @@ export default function ApisPage() {
             {
               name: "Delete User",
               category: "user",
-              url: "http://localhost:5000/api/auth/delete/${id}",
+              url: https://skyronerp.onrender.com/api/auth/delete/${id}",
               method: "DELETE",
               payload: "Note: pass the token in authorization as bearer token",
               response: '{"success": true, "message": "User deleted successfully"}',
@@ -104,7 +104,7 @@ export default function ApisPage() {
             {
               name: "Create EBOM",
               category: "ebom",
-              url: "http://localhost:5000/api/bom/create",
+              url: https://skyronerp.onrender.com/api/bom/create",
               method: "POST",
               payload:
                 '{"type": "type of EBOM", "name": "name of EBOM", "revision": "Revision Number", "partNumber": "EBOM part Number", "description": "EBOM Description", "quantityRequired": Number, "stockLevel": Number, "supplierInfo": "Supplier Info", "partWeight": "weight in kg", "uom": "unit of measure", "manufacturingInfo": "manufacturing Info", "inventoryLocation": "inventory Location"}',
@@ -115,7 +115,7 @@ export default function ApisPage() {
             {
               name: "Get All EBOM",
               category: "ebom",
-              url: "http://localhost:5000/api/bom/",
+              url: https://skyronerp.onrender.com/api/bom/",
               method: "GET",
               payload: "N/A",
               response:
@@ -125,7 +125,7 @@ export default function ApisPage() {
             {
               name: "Get EBOM By Id",
               category: "ebom",
-              url: "http://localhost:5000/api/bom/${id}",
+              url: https://skyronerp.onrender.com/api/bom/${id}",
               method: "GET",
               payload: "N/A",
               response:
@@ -135,7 +135,7 @@ export default function ApisPage() {
             {
               name: "Update EBOM By Id",
               category: "ebom",
-              url: "http://localhost:5000/api/bom/${id}",
+              url: https://skyronerp.onrender.com/api/bom/${id}",
               method: "PUT",
               payload: '{"---update EBOM data---"}',
               response:
@@ -145,7 +145,7 @@ export default function ApisPage() {
             {
               name: "Delete EBOM By Id",
               category: "ebom",
-              url: "http://localhost:5000/api/bom/${id}",
+              url: https://skyronerp.onrender.com/api/bom/${id}",
               method: "DELETE",
               payload: "N/A",
               response: '{"success": true, "message": "BOM deleted successfully"}',
@@ -154,7 +154,7 @@ export default function ApisPage() {
             {
               name: "Create Document",
               category: "document",
-              url: "http://localhost:5000/api/documents/create",
+              url: https://skyronerp.onrender.com/api/documents/create",
               method: "POST",
               payload:
                 '{"name": "Product Manual", "description": "This is the product manual for the ABC product.", "fileUrl": "https://example.com/files/product-manual.pdf"}',
@@ -165,7 +165,7 @@ export default function ApisPage() {
             {
               name: "Get All Documents",
               category: "document",
-              url: "http://localhost:5000/api/documents/",
+              url: https://skyronerp.onrender.com/api/documents/",
               method: "GET",
               payload: "N/A",
               response:
@@ -175,7 +175,7 @@ export default function ApisPage() {
             {
               name: "Get Document By Id",
               category: "document",
-              url: "http://localhost:5000/api/documents/${id}",
+              url: https://skyronerp.onrender.com/api/documents/${id}",
               method: "GET",
               payload: "N/A",
               response:
@@ -185,7 +185,7 @@ export default function ApisPage() {
             {
               name: "Update Document By Id",
               category: "document",
-              url: "http://localhost:5000/api/documents/${id}",
+              url: https://skyronerp.onrender.com/api/documents/${id}",
               method: "PUT",
               payload: '{"--document update changes----"}',
               response:
@@ -195,7 +195,7 @@ export default function ApisPage() {
             {
               name: "Delete Document By Id",
               category: "document",
-              url: "http://localhost:5000/api/documents/${id}",
+              url: https://skyronerp.onrender.com/api/documents/${id}",
               method: "DELETE",
               payload: "N/A",
               response: '{"success": true, "message": "Document deleted successfully"}',
