@@ -2,358 +2,218 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Clipboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
-import DashboardLayout from "@/components/dashboard-layout"
+import { Loader2, Lock, User } from "lucide-react"
+import "./LoginPage.css" // Make sure to import the CSS file
 
-interface ApiItem {
-  name: string
-  category: string
-  url: string
-  method: string
-  payload: string | null
-  response: string
-  status: string
-}
-
-interface ApiCategories {
-  [key: string]: ApiItem[]
-}
-
-export default function ApisPage() {
-  const [apiData, setApiData] = useState<ApiItem[]>([])
-  const [filteredApis, setFilteredApis] = useState<ApiItem[]>([])
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [expandedApis, setExpandedApis] = useState<Record<number, boolean>>({})
-  const [loading, setLoading] = useState(true)
+export default function LoginPage() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    // Check if user is logged in
+    // Check if user is already logged in
     const token = localStorage.getItem("authToken")
-    if (!token) {
-      router.push("/")
-      return
+    if (token) {
+      router.push("/dashboard")
     }
 
-    // Load API data
-    const loadApiData = async () => {
-      try {
-        // Instead of fetching from a file, we'll use a hardcoded API data
-        // In a real app, you would fetch this from your backend API
-        const apiData = {
-          apis: [
-            {
-              name: "SignUp Api",
-              category: "user",
-              url: https://skyronerp.onrender.com/api/auth/signup",
-              method: "POST",
-              payload:
-                '{"fullname": "your Full Name", "email": "user email for signup", "password": "password for signup"}',
-              response: '{"success": true, "message": "User created Successfully"}',
-              status: "Active",
+    // Initialize particles.js
+    if (typeof window !== "undefined" && window.particlesJS) {
+      window.particlesJS("particles-js", {
+        particles: {
+          number: {
+            value: 80,
+            density: {
+              enable: true,
+              value_area: 800,
             },
-            {
-              name: "user Login API",
-              category: "user",
-              url: https://skyronerp.onrender.com/api/auth/login",
-              method: "POST",
-              payload: '{"email": "user email for login", "password": "password for login"}',
-              response:
-                '{"success": true, "message": "Login Successful", "user": {"_id": "xxxxxxxx", "email": "user email", "password": "user password bycrypt code", "fullname": "user fullname", "__v": 0}, "token": "---generated token---"}',
-              status: "Active",
+          },
+          color: {
+            value: "#ffffff",
+          },
+          shape: {
+            type: "circle",
+            stroke: {
+              width: 0,
+              color: "#000000",
             },
-            {
-              name: "Get particular user",
-              category: "user",
-              url: https://skyronerp.onrender.com/api/auth/profile/${id}",
-              method: "GET",
-              payload: null,
-              response: '{"user": {"email": "user email id", "fullname": "user password"}}',
-              status: "Active",
+            polygon: {
+              nb_sides: 5,
             },
-            {
-              name: "Update User",
-              category: "user",
-              url: https://skyronerp.onrender.com/api/auth/update/${id}",
-              method: "PUT",
-              payload: '{"---update user data---"}',
-              response: '{"success": true, "message": "User updated successfully"}',
-              status: "Active",
+          },
+          opacity: {
+            value: 0.5,
+            random: false,
+            anim: {
+              enable: false,
+              speed: 1,
+              opacity_min: 0.1,
+              sync: false,
             },
-            {
-              name: "List All users",
-              category: "user",
-              url: https://skyronerp.onrender.com/api/auth/users",
-              method: "GET",
-              payload: "N/A",
-              response: '{"users": [{"_id": "user id", "email": "user email", "fullname": "user fullname", "__v": 0}]}',
-              status: "Active",
+          },
+          size: {
+            value: 3,
+            random: true,
+            anim: {
+              enable: false,
+              speed: 40,
+              size_min: 0.1,
+              sync: false,
             },
-            {
-              name: "Delete User",
-              category: "user",
-              url: https://skyronerp.onrender.com/api/auth/delete/${id}",
-              method: "DELETE",
-              payload: "Note: pass the token in authorization as bearer token",
-              response: '{"success": true, "message": "User deleted successfully"}',
-              status: "Active",
+          },
+          line_linked: {
+            enable: true,
+            distance: 150,
+            color: "#ffffff",
+            opacity: 0.4,
+            width: 1,
+          },
+          move: {
+            enable: true,
+            speed: 6,
+            direction: "none",
+            random: false,
+            straight: false,
+            out_mode: "out",
+            bounce: false,
+            attract: {
+              enable: false,
+              rotateX: 600,
+              rotateY: 1200,
             },
-            {
-              name: "Create EBOM",
-              category: "ebom",
-              url: https://skyronerp.onrender.com/api/bom/create",
-              method: "POST",
-              payload:
-                '{"type": "type of EBOM", "name": "name of EBOM", "revision": "Revision Number", "partNumber": "EBOM part Number", "description": "EBOM Description", "quantityRequired": Number, "stockLevel": Number, "supplierInfo": "Supplier Info", "partWeight": "weight in kg", "uom": "unit of measure", "manufacturingInfo": "manufacturing Info", "inventoryLocation": "inventory Location"}',
-              response:
-                '{"success": true, "message": "BOM created successfully.", "newBOM": {"type": "type of EBOM", "name": "name of EBOM", "revision": "Revision Number", "partNumber": "EBOM part Number", "description": "EBOM Description", "quantityRequired": Number, "stockLevel": Number, "supplierInfo": "Supplier Info", "partWeight": "weight in kg", "uom": "unit of measure", "manufacturingInfo": "manufacturing Info", "inventoryLocation": "inventory Location", "_id": "object id", "createdAt": "created date", "updatedAt": "updated date", "__v": 0}}',
-              status: "Active",
+          },
+        },
+        interactivity: {
+          detect_on: "canvas",
+          events: {
+            onhover: {
+              enable: true,
+              mode: "repulse",
             },
-            {
-              name: "Get All EBOM",
-              category: "ebom",
-              url: https://skyronerp.onrender.com/api/bom/",
-              method: "GET",
-              payload: "N/A",
-              response:
-                '{"bomData": [{"_id": "object id", "type": "type of EBOM", "name": "name of EBOM", "revision": "Revision Number", "partNumber": "EBOM part Number", "description": "EBOM Description", "quantityRequired": Number, "stockLevel": Number, "supplierInfo": "Supplier Info", "partWeight": "weight in kg", "uom": "unit of measure", "manufacturingInfo": "manufacturing Info", "inventoryLocation": "inventory Location", "createdAt": "created date", "updatedAt": "updated date", "__v": 0}]}',
-              status: "Active",
+            onclick: {
+              enable: true,
+              mode: "push",
             },
-            {
-              name: "Get EBOM By Id",
-              category: "ebom",
-              url: https://skyronerp.onrender.com/api/bom/${id}",
-              method: "GET",
-              payload: "N/A",
-              response:
-                '{"bom": {"_id": "object id", "type": "type of EBOM", "name": "name of EBOM", "revision": "Revision Number", "partNumber": "EBOM part Number", "description": "EBOM Description", "quantityRequired": Number, "stockLevel": Number, "supplierInfo": "Supplier Info", "partWeight": "weight in kg", "uom": "unit of measure", "manufacturingInfo": "manufacturing Info", "inventoryLocation": "inventory Location", "createdAt": "created date", "updatedAt": "updated date", "__v": 0}}',
-              status: "Active",
-            },
-            {
-              name: "Update EBOM By Id",
-              category: "ebom",
-              url: https://skyronerp.onrender.com/api/bom/${id}",
-              method: "PUT",
-              payload: '{"---update EBOM data---"}',
-              response:
-                '{"success": true, "message": "BOM updated successfully.", "bom": {"_id": "object id", "type": "type of EBOM", "name": "name of EBOM", "revision": "Revision Number", "partNumber": "EBOM part Number", "description": "EBOM Description", "quantityRequired": Number, "stockLevel": Number, "supplierInfo": "Supplier Info", "partWeight": "weight in kg", "uom": "unit of measure", "manufacturingInfo": "manufacturing Info", "inventoryLocation": "inventory Location", "createdAt": "created date", "updatedAt": "updated date", "__v": 0}}',
-              status: "Active",
-            },
-            {
-              name: "Delete EBOM By Id",
-              category: "ebom",
-              url: https://skyronerp.onrender.com/api/bom/${id}",
-              method: "DELETE",
-              payload: "N/A",
-              response: '{"success": true, "message": "BOM deleted successfully"}',
-              status: "Active",
-            },
-            {
-              name: "Create Document",
-              category: "document",
-              url: https://skyronerp.onrender.com/api/documents/create",
-              method: "POST",
-              payload:
-                '{"name": "Product Manual", "description": "This is the product manual for the ABC product.", "fileUrl": "https://example.com/files/product-manual.pdf"}',
-              response:
-                '{"success": true, "message": "Document created successfully.", "newDocument": {"name": "Document Name", "description": "Document Description", "fileUrl": "Document url", "_id": "67e52f36dd34161b978210cb", "createdAt": "2025-03-27T10:57:58.295Z", "__v": 0}}',
-              status: "Active",
-            },
-            {
-              name: "Get All Documents",
-              category: "document",
-              url: https://skyronerp.onrender.com/api/documents/",
-              method: "GET",
-              payload: "N/A",
-              response:
-                '{"documents": [{"_id": "Object Id", "name": "Document Name", "description": "Document Description", "fileUrl": "Document url", "_id": "67e52f36dd34161b978210cb", "createdAt": "2025-03-27T10:57:58.295Z", "__v": 0}]}',
-              status: "Active",
-            },
-            {
-              name: "Get Document By Id",
-              category: "document",
-              url: https://skyronerp.onrender.com/api/documents/${id}",
-              method: "GET",
-              payload: "N/A",
-              response:
-                '{"document": {"_id": "Object Id", "name": "Document Name", "description": "Document Description", "fileUrl": "Document url", "_id": "67e52f36dd34161b978210cb", "createdAt": "2025-03-27T10:57:58.295Z", "__v": 0}}',
-              status: "Active",
-            },
-            {
-              name: "Update Document By Id",
-              category: "document",
-              url: https://skyronerp.onrender.com/api/documents/${id}",
-              method: "PUT",
-              payload: '{"--document update changes----"}',
-              response:
-                '{"success": true, "message": "Document updated successfully.", "document": {"_id": "Object Id", "name": "Document Name", "description": "Document Description", "fileUrl": "Document url", "_id": "67e52f36dd34161b978210cb", "createdAt": "2025-03-27T10:57:58.295Z", "__v": 0}}',
-              status: "Active",
-            },
-            {
-              name: "Delete Document By Id",
-              category: "document",
-              url: https://skyronerp.onrender.com/api/documents/${id}",
-              method: "DELETE",
-              payload: "N/A",
-              response: '{"success": true, "message": "Document deleted successfully"}',
-              status: "Active",
-            },
-          ],
-        }
-
-        setApiData(apiData.apis)
-      } catch (err) {
-        console.error("Error loading API data:", err)
-      } finally {
-        setLoading(false)
-      }
+            resize: true,
+          },
+        },
+        retina_detect: true,
+      })
     }
-
-    loadApiData()
   }, [router])
 
-  const filterCategory = (category: string) => {
-    if (activeCategory === category) {
-      setActiveCategory(null)
-      setFilteredApis([])
-    } else {
-      setActiveCategory(category)
-      const filtered = apiData.filter((api) => api.category === category)
-      setFilteredApis(filtered)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      const response = await fetch("https://skyronerp.onrender.com/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Store the JWT token in localStorage
+        localStorage.setItem("authToken", data.token)
+
+        // Store the user data in localStorage
+        localStorage.setItem("user", JSON.stringify(data.user))
+
+        toast({
+          title: "Login successful",
+          description: "Redirecting to dashboard...",
+        })
+
+        // Redirect to dashboard
+        router.push("/dashboard")
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Login failed",
+          description: data.message || "Please check your credentials and try again.",
+        })
+      }
+    } catch (error) {
+      console.error("Error during login:", error)
+      toast({
+        variant: "destructive",
+        title: "Login error",
+        description: "An error occurred. Please try again later.",
+      })
+    } finally {
+      setLoading(false)
     }
   }
-
-  const toggleApiDetails = (index: number) => {
-    setExpandedApis((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }))
-  }
-
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({
-      description: "Copied to clipboard",
-    })
-  }
-
-  // Group APIs by category
-  const categories = apiData.reduce<ApiCategories>((acc, api) => {
-    if (!acc[api.category]) {
-      acc[api.category] = []
-    }
-    acc[api.category].push(api)
-    return acc
-  }, {})
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-2">APIs</h1>
-        <p className="mb-6 text-sm text-gray-600">
-          Pass the token on Authorization bearer Token and the token will be generated after login
-        </p>
+    <div className="login min-h-screen">
+      {/* Particle background effect */}
+      <div id="particles-js"></div>
 
-        {loading ? (
-          <div className="text-center py-8">Loading API data...</div>
-        ) : (
-          <>
-            {/* Category Cards */}
-            <div className="flex flex-wrap gap-4 mb-8">
-              {Object.keys(categories).map((category) => (
-                <div
-                  key={category}
-                  className="category-card p-4 rounded-lg cursor-pointer"
-                  onClick={() => filterCategory(category)}
-                >
-                  <h3 className="font-medium">{category.charAt(0).toUpperCase() + category.slice(1)} APIs</h3>
-                </div>
-              ))}
+      <div className="container mx-auto px-4">
+        <div className="login-container-wrapper">
+          <div className="logo">
+            <User className="w-12 h-12 text-white mx-auto" />
+          </div><br/><br/>
+          <div className="welcome">
+            <strong>Skyron ERP</strong><br/>
+            <strong>Welcome,</strong> please login
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="relative">
+              <Input
+                id="login_username"
+                type="email"
+                placeholder="Username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="pl-10 bg-[rgba(40,52,67,0.75)] border-l-4 border-[#93a5ab] text-white h-12"
+              />
+              <User className="absolute left-3 top-3 h-5 w-5 text-[#93a5ab]" />
             </div>
 
-            {/* API Cards */}
-            {activeCategory && (
-              <div className="space-y-4">
-                {filteredApis.map((api, index) => (
-                  <div
-                    key={index}
-                    className="api-card"
-                    style={{ borderLeftColor: api.status === "Active" ? "#28a745" : "#dc3545" }}
-                  >
-                    <div
-                      className="flex justify-between items-center cursor-pointer"
-                      onClick={() => toggleApiDetails(index)}
-                    >
-                      <h3 className="text-blue-600 font-medium">{api.name}</h3>
-                      <span className={`status ${api.status.toLowerCase()} px-2 py-1 rounded text-xs`}>
-                        {api.status}
-                      </span>
-                    </div>
+            <div className="relative">
+              <Input
+                id="login_password"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pl-10 bg-[rgba(40,52,67,0.75)] border-l-4 border-[#93a5ab] text-white h-12"
+              />
+              <Lock className="absolute left-3 top-3 h-5 w-5 text-[#93a5ab]" />
+            </div>
 
-                    {expandedApis[index] && (
-                      <div className="mt-4 space-y-3">
-                        <p>
-                          <strong>URL:</strong>{" "}
-                          <a
-                            href={api.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline"
-                          >
-                            {api.url}
-                          </a>
-                        </p>
-                        <p>
-                          <strong>Method:</strong>{" "}
-                          <span className={`method ${api.method} px-2 py-1 rounded text-xs`}>{api.method}</span>
-                        </p>
-                        <div>
-                          <p>
-                            <strong>Request Payload:</strong>
-                          </p>
-                          <div className="relative bg-gray-100 p-3 rounded font-mono text-sm whitespace-pre-wrap">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2"
-                              onClick={() => copyText(api.payload || "N/A")}
-                            >
-                              <Clipboard className="h-4 w-4" />
-                              <span className="sr-only">Copy</span>
-                            </Button>
-                            {api.payload ? api.payload : "N/A"}
-                          </div>
-                        </div>
-                        <div>
-                          <p>
-                            <strong>Response Example:</strong>
-                          </p>
-                          <div className="relative bg-gray-100 p-3 rounded font-mono text-sm whitespace-pre-wrap">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2"
-                              onClick={() => copyText(api.response)}
-                            >
-                              <Clipboard className="h-4 w-4" />
-                              <span className="sr-only">Copy</span>
-                            </Button>
-                            {api.response}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+            <Button
+              type="submit"
+              className="w-full bg-transparent border-2 border-[#93a5ab] hover:border-white hover:bg-[#7692A7] transition-all duration-300"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
-    </DashboardLayout>
+    </div>
   )
 }
-
