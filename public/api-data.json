@@ -3,7 +3,7 @@
     {
       "name": "SignUp Api",
       "category": "user",
-      "url": "http://localhost:5000/api/auth/signup",
+      "url": "https://skyronerp.onrender.com/api/auth/signup",
       "method": "POST",
       "payload": "{\"fullname\": \"your Full Name\", \"email\": \"user email for signup\", \"password\": \"password for signup\"}",
       "response": "{\"success\": true, \"message\": \"User created Successfully\"}",
@@ -12,7 +12,7 @@
     {
       "name": "user Login API",
       "category": "user",
-      "url": "http://localhost:5000/api/auth/login",
+      "url": "https://skyronerp.onrender.com/api/auth/login",
       "method": "POST",
       "payload": "{\"email\": \"user email for login\", \"password\": \"password for login\"}",
       "response": "{\"success\": true, \"message\": \"Login Successful\", \"user\": {\"_id\": \"xxxxxxxx\", \"email\": \"user email\", \"password\": \"user password bycrypt code\", \"fullname\": \"user fullname\", \"__v\": 0}, \"token\": \"---generated token---\"}",
@@ -21,7 +21,7 @@
     {
       "name": "Get particular user",
       "category": "user",
-      "url": "http://localhost:5000/api/auth/profile/${id}",
+      "url": "https://skyronerp.onrender.com/api/auth/profile/${id}",
       "method": "GET",
       "payload": null,
       "response": "{\"user\": {\"email\": \"user email id\", \"fullname\": \"user password\"}}",
@@ -30,7 +30,7 @@
     {
       "name": "Update User",
       "category": "user",
-      "url": "http://localhost:5000/api/auth/update/${id}",
+      "url": "https://skyronerp.onrender.com/api/auth/update/${id}",
       "method": "PUT",
       "payload": "{\"---update user data---\"}",
       "response": "{\"success\": true, \"message\": \"User updated successfully\"}",
@@ -39,7 +39,7 @@
     {
       "name": "List All users",
       "category": "user",
-      "url": "http://localhost:5000/api/auth/users",
+      "url": "https://skyronerp.onrender.com/api/auth/users",
       "method": "GET",
       "payload": "N/A",
       "response": "{\"users\": [{\"_id\": \"user id\", \"email\": \"user email\", \"fullname\": \"user fullname\", \"__v\": 0}]}",
@@ -48,7 +48,7 @@
     {
       "name": "Delete User",
       "category": "user",
-      "url": "http://localhost:5000/api/auth/delete/${id}",
+      "url": "https://skyronerp.onrender.com/api/auth/delete/${id}",
       "method": "DELETE",
       "payload": "Note: pass the token in authorization as bearer token",
       "response": "{\"success\": true, \"message\": \"User deleted successfully\"}",
@@ -57,7 +57,7 @@
     {
       "name": "Create EBOM",
       "category": "ebom",
-      "url": "http://localhost:5000/api/bom/create",
+      "url": "https://skyronerp.onrender.com/api/bom/create",
       "method": "POST",
       "payload": "{\"type\": \"type of EBOM\", \"name\": \"name of EBOM\", \"revision\": \"Revision Number\", \"partNumber\": \"EBOM part Number\", \"description\": \"EBOM Description\", \"quantityRequired\": Number, \"stockLevel\": Number, \"supplierInfo\": \"Supplier Info\", \"partWeight\": \"weight in kg\", \"uom\": \"unit of measure\", \"manufacturingInfo\": \"manufacturing Info\", \"inventoryLocation\": \"inventory Location\"}",
       "response": "{\"success\": true, \"message\": \"BOM created successfully.\", \"newBOM\": {\"type\": \"type of EBOM\", \"name\": \"name of EBOM\", \"revision\": \"Revision Number\", \"partNumber\": \"EBOM part Number\", \"description\": \"EBOM Description\", \"quantityRequired\": Number, \"stockLevel\": Number, \"supplierInfo\": \"Supplier Info\", \"partWeight\": \"weight in kg\", \"uom\": \"unit of measure\", \"manufacturingInfo\": \"manufacturing Info\", \"inventoryLocation\": \"inventory Location\", \"_id\": \"object id\", \"createdAt\": \"created date\", \"updatedAt\": \"updated date\", \"__v\": 0}}",
@@ -66,7 +66,7 @@
     {
       "name": "Get All EBOM",
       "category": "ebom",
-      "url": "http://localhost:5000/api/bom/",
+      "url": "https://skyronerp.onrender.com/api/bom/",
       "method": "GET",
       "payload": "N/A",
       "response": "{\"bomData\": [{\"_id\": \"object id\", \"type\": \"type of EBOM\", \"name\": \"name of EBOM\", \"revision\": \"Revision Number\", \"partNumber\": \"EBOM part Number\", \"description\": \"EBOM Description\", \"quantityRequired\": Number, \"stockLevel\": Number, \"supplierInfo\": \"Supplier Info\", \"partWeight\": \"weight in kg\", \"uom\": \"unit of measure\", \"manufacturingInfo\": \"manufacturing Info\", \"inventoryLocation\": \"inventory Location\", \"createdAt\": \"created date\", \"updatedAt\": \"updated date\", \"__v\": 0}]}",
@@ -75,7 +75,7 @@
     {
       "name": "Get EBOM By Id",
       "category": "ebom",
-      "url": "http://localhost:5000/api/bom/${id}",
+      "url": "https://skyronerp.onrender.com/api/bom/${id}",
       "method": "GET",
       "payload": "N/A",
       "response": "{\"bom\": {\"_id\": \"object id\", \"type\": \"type of EBOM\", \"name\": \"name of EBOM\", \"revision\": \"Revision Number\", \"partNumber\": \"EBOM part Number\", \"description\": \"EBOM Description\", \"quantityRequired\": Number, \"stockLevel\": Number, \"supplierInfo\": \"Supplier Info\", \"partWeight\": \"weight in kg\", \"uom\": \"unit of measure\", \"manufacturingInfo\": \"manufacturing Info\", \"inventoryLocation\": \"inventory Location\", \"createdAt\": \"created date\", \"updatedAt\": \"updated date\", \"__v\": 0}}",
@@ -84,7 +84,7 @@
     {
       "name": "Update EBOM By Id",
       "category": "ebom",
-      "url": "http://localhost:5000/api/bom/${id}",
+      "url": "https://skyronerp.onrender.com/api/bom/${id}",
       "method": "PUT",
       "payload": "{\"---update EBOM data---\"}",
       "response": "{\"success\": true, \"message\": \"BOM updated successfully.\", \"bom\": {\"_id\": \"object id\", \"type\": \"type of EBOM\", \"name\": \"name of EBOM\", \"revision\": \"Revision Number\", \"partNumber\": \"EBOM part Number\", \"description\": \"EBOM Description\", \"quantityRequired\": Number, \"stockLevel\": Number, \"supplierInfo\": \"Supplier Info\", \"partWeight\": \"weight in kg\", \"uom\": \"unit of measure\", \"manufacturingInfo\": \"manufacturing Info\", \"inventoryLocation\": \"inventory Location\", \"createdAt\": \"created date\", \"updatedAt\": \"updated date\", \"__v\": 0}}",
@@ -93,7 +93,7 @@
     {
       "name": "Delete EBOM By Id",
       "category": "ebom",
-      "url": "http://localhost:5000/api/bom/${id}",
+      "url": "https://skyronerp.onrender.com/api/bom/${id}",
       "method": "DELETE",
       "payload": "N/A",
       "response": "{\"success\": true, \"message\": \"BOM deleted successfully\"}",
@@ -102,7 +102,7 @@
     {
       "name": "Create Document",
       "category": "document",
-      "url": "http://localhost:5000/api/documents/create",
+      "url": "https://skyronerp.onrender.com/api/documents/create",
       "method": "POST",
       "payload": "{\"name\": \"Product Manual\", \"description\": \"This is the product manual for the ABC product.\", \"fileUrl\": \"https://example.com/files/product-manual.pdf\"}",
       "response": "{\"success\": true, \"message\": \"Document created successfully.\", \"newDocument\": {\"name\": \"Document Name\", \"description\": \"Document Description\", \"fileUrl\": \"Document url\", \"_id\": \"67e52f36dd34161b978210cb\", \"createdAt\": \"2025-03-27T10:57:58.295Z\", \"__v\": 0}}",
@@ -111,7 +111,7 @@
     {
       "name": "Get All Documents",
       "category": "document",
-      "url": "http://localhost:5000/api/documents/",
+      "url": "https://skyronerp.onrender.com/api/documents/",
       "method": "GET",
       "payload": "N/A",
       "response": "{\"documents\": [{\"_id\": \"Object Id\", \"name\": \"Document Name\", \"description\": \"Document Description\", \"fileUrl\": \"Document url\", \"_id\": \"67e52f36dd34161b978210cb\", \"createdAt\": \"2025-03-27T10:57:58.295Z\", \"__v\": 0}]}",
@@ -125,7 +125,7 @@
     {
       "name": "Get Document By Id",
       "category": "document",
-      "url": "http://localhost:5000/api/documents/${id}",
+      "url": "https://skyronerp.onrender.com/api/documents/${id}",
       "method": "GET",
       "payload": "N/A",
       "response": "{\"document\": {\"_id\": \"Object Id\", \"name\": \"Document Name\", \"description\": \"Document Description\", \"fileUrl\": \"Document url\", \"_id\": \"67e52f36dd34161b978210cb\", \"createdAt\": \"2025-03-27T10:57:58.295Z\", \"__v\": 0}}",
@@ -134,7 +134,7 @@
     {
       "name": "Update Document By Id",
       "category": "document",
-      "url": "http://localhost:5000/api/documents/${id}",
+      "url": "https://skyronerp.onrender.com/api/documents/${id}",
       "method": "PUT",
       "payload": "{\"--document update changes----\"}",
       "response": "{\"success\": true, \"message\": \"Document updated successfully.\", \"document\": {\"_id\": \"Object Id\", \"name\": \"Document Name\", \"description\": \"Document Description\", \"fileUrl\": \"Document url\", \"_id\": \"67e52f36dd34161b978210cb\", \"createdAt\": \"2025-03-27T10:57:58.295Z\", \"__v\": 0}}",
@@ -143,7 +143,7 @@
     {
       "name": "Delete Document By Id",
       "category": "document",
-      "url": "http://localhost:5000/api/documents/${id}",
+      "url": "https://skyronerp.onrender.com/api/documents/${id}",
       "method": "DELETE",
       "payload": "N/A",
       "response": "{\"success\": true, \"message\": \"Document deleted successfully\"}",
