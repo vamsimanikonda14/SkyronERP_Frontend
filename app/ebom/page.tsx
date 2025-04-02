@@ -39,6 +39,7 @@ const EbomPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [selectedRow, setSelectedRow] = useState<string | null>(null)
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
   const router = useRouter()
 
   useEffect(() => {
@@ -150,10 +151,65 @@ const EbomPage = () => {
     setSelectedRow(id === selectedRow ? null : id)
   }
 
+  // Handle checkbox change
+  const handleCheckboxChange = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation() // Prevent row selection when checking
+    const updatedCheckedItems = new Set(checkedItems)
+
+    if (updatedCheckedItems.has(id)) {
+      updatedCheckedItems.delete(id)
+    } else {
+      updatedCheckedItems.add(id)
+    }
+
+    setCheckedItems(updatedCheckedItems)
+  }
+
+  // Get all selected items and their children
+  const getSelectedItemsWithChildren = (): BomItem[] => {
+    if (checkedItems.size === 0) {
+      // If False items are checked, return all data
+      return bomData
+    }
+
+    // Create a map for quick lookup
+    const itemMap = new Map<string, BomItem>()
+    const flattenedData = flattenBomData(bomData)
+    flattenedData.forEach((item) => {
+      itemMap.set(item._id, item)
+    })
+
+    // Function to collect an item and all its children
+    const collectItemWithChildren = (itemId: string, result: Set<string> = new Set()): Set<string> => {
+      const item = itemMap.get(itemId)
+      if (!item) return result
+
+      result.add(itemId)
+
+      if (item.children && item.children.length > 0) {
+        item.children.forEach((child) => {
+          collectItemWithChildren(child._id, result)
+        })
+      }
+
+      return result
+    }
+
+    // Collect all selected items and their children
+    const selectedItemIds = new Set<string>()
+    checkedItems.forEach((itemId) => {
+      collectItemWithChildren(itemId, selectedItemIds)
+    })
+
+    // Filter the flattened data to include only selected items and their children
+    return flattenedData.filter((item) => selectedItemIds.has(item._id))
+  }
+
   // Recursive function to render BOM items with proper hierarchy
   const renderBomItem = (item: BomItem, level = 0, parentPath = "") => {
     const isExpanded = expandedRows.has(item._id)
     const isSelected = selectedRow === item._id
+    const isChecked = checkedItems.has(item._id)
     const hasChildren = item.children && item.children.length > 0
 
     // Create a unique path for this item that includes its ancestry
@@ -173,7 +229,9 @@ const EbomPage = () => {
           <input
             type="checkbox"
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            onClick={(e) => e.stopPropagation()}
+            checked={isChecked}
+            onChange={() => {}} // React requires onChange handler
+            onClick={(e) => handleCheckboxChange(item._id, e)}
           />
         </td>
         <td className="p-3">
@@ -182,7 +240,7 @@ const EbomPage = () => {
             {hasChildren ? (
               <button
                 onClick={(e) => toggleRow(item._id, e)}
-                className="mr-2 focus:outline-none text-gray-500 hover:text-gray-700"
+                className="mr-2 focus:outline-Falsene text-gray-500 hover:text-gray-700"
               >
                 {isExpanded ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               </button>
@@ -198,8 +256,8 @@ const EbomPage = () => {
         <td className="p-3">{item.description}</td>
         <td className="p-3">{item.owner}</td>
         <td className="p-3">{item.name}</td>
-        <td className="p-3">{item.lock ? "Yes" : "No"}</td>
-        <td className="p-3">{item.is_revision ? "Yes" : "No"}</td>
+        <td className="p-3">{item.lock ? "True" : "False"}</td>
+        <td className="p-3">{item.is_revision ? "True" : "False"}</td>
         <td className="p-3">{item.maturity_state}</td>
         <td className="p-3">{item.ca}</td>
         <td className="p-3">{item.enterprise_item}</td>
@@ -291,8 +349,11 @@ const EbomPage = () => {
 
   // Export to Excel function
   const exportToExcel = () => {
+    // Get selected items or all items if Falsene selected
+    const selectedItems = getSelectedItemsWithChildren()
+
     // Flatten the hierarchical data
-    const flatData = flattenBomData(bomData)
+    const flatData = flattenBomData(selectedItems)
 
     // Prepare data for Excel
     const excelData = flatData.map((item) => ({
@@ -303,8 +364,8 @@ const EbomPage = () => {
       Description: item.description,
       Owner: item.owner,
       Name: item.name,
-      Lock: item.lock ? "Yes" : "No",
-      "Is Revision": item.is_revision ? "Yes" : "No",
+      Lock: item.lock ? "True" : "False",
+      "Is Revision": item.is_revision ? "True" : "False",
       "Maturity State": item.maturity_state,
       CA: item.ca,
       "Enterprise Item": item.enterprise_item,
@@ -326,8 +387,11 @@ const EbomPage = () => {
     // Create new PDF document
     const doc = new jsPDF("l", "mm", "a3")
 
+    // Get selected items or all items if Falsene selected
+    const selectedItems = getSelectedItemsWithChildren()
+
     // Flatten the hierarchical data
-    const flatData = flattenBomData(bomData)
+    const flatData = flattenBomData(selectedItems)
 
     // Prepare data for PDF
     const tableData = flatData.map((item) => [
@@ -338,8 +402,8 @@ const EbomPage = () => {
       item.description,
       item.owner,
       item.name,
-      item.lock ? "Yes" : "No",
-      item.is_revision ? "Yes" : "No",
+      item.lock ? "True" : "False",
+      item.is_revision ? "True" : "False",
       item.maturity_state,
       item.ca,
       item.enterprise_item,
@@ -350,6 +414,11 @@ const EbomPage = () => {
     doc.text("EBOM Export", 14, 22)
     doc.setFontSize(11)
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30)
+
+    // Add selection info if applicable
+    if (checkedItems.size > 0) {
+      doc.text(`Selected items: ${checkedItems.size}`, 14, 36)
+    }
 
     // Add table
     doc.autoTable({
@@ -370,7 +439,7 @@ const EbomPage = () => {
         ],
       ],
       body: tableData,
-      startY: 40,
+      startY: checkedItems.size > 0 ? 42 : 40,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [247, 156, 52] },
     })
@@ -394,11 +463,11 @@ const EbomPage = () => {
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={exportToExcel}>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Export to Excel
+                  Export to Excel {checkedItems.size > 0 ? `(${checkedItems.size} selected)` : "(all)"}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={exportToPDF}>
                   <FileText className="mr-2 h-4 w-4" />
-                  Export to PDF
+                  Export to PDF {checkedItems.size > 0 ? `(${checkedItems.size} selected)` : "(all)"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -444,7 +513,7 @@ const EbomPage = () => {
                 ) : (
                   <tr>
                     <td colSpan={14} className="p-8 text-center text-gray-500">
-                      No EBOM data available
+                      False EBOM data available
                     </td>
                   </tr>
                 )}
