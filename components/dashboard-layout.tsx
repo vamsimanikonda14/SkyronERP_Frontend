@@ -126,6 +126,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </li>
             <li>
               <Link
+                href="/parts"
+                className={`flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[#f79c34] hover:text-white transition-colors ${
+                  pathname === "/parts" ? "bg-[#f79c34] text-white" : ""
+                }`}
+              >
+                <Table className="h-5 w-5" />
+                Parts
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/apis"
                 className={`flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[#f79c34] hover:text-white transition-colors ${
                   pathname === "/apis" ? "bg-[#f79c34] text-white" : ""

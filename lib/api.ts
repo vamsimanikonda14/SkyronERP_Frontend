@@ -91,4 +91,26 @@ export const ebomApi = {
       method: "DELETE",
     }),
 }
+// API functions for Part
+export const partsApi = {
+  getAll: () => fetchWithAuth("/parts/"),
 
+  getById: (id: string) => fetchWithAuth(`/parts/${id}`),
+
+  create: (data: any) =>
+    fetchWithAuth("/parts/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: any) =>
+    fetchWithAuth(`/parts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchWithAuth(`/parts/${id}`, {
+      method: "DELETE",
+    }),
+}

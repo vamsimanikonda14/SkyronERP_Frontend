@@ -5,7 +5,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Eye, AlertCircle, FileText, FileSpreadsheet, Download } from "lucide-react"
+import { Eye, AlertCircle, FileText, FileSpreadsheet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -14,18 +14,23 @@ import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
 import "jspdf-autotable"
 
-// Interface for documents
-interface Document {
+// Interfaces for parts
+interface Part {
   _id: string
+  title: string
+  type: string
   name: string
+  revision: string
   description: string
-  fileUrl: string
-  createdAt?: string
-  updatedAt?: string
+  revisionComment: string
+  project: string
+  organization: string
+  owner: string
+  creationDate: string
 }
 
-const DocumentPage = () => {
-  const [documents, setDocuments] = useState<Document[]>([])
+const PartPage = () => {
+  const [parts, setParts] = useState<Part[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState<string | null>(null)
@@ -39,35 +44,35 @@ const DocumentPage = () => {
       return
     }
 
-    const fetchDocuments = async () => {
+    const fetchParts = async () => {
       try {
-        const response = await fetch("https://skyronerp.onrender.com/api/documents/", {
+        const response = await fetch("https://skyronerp.onrender.com/api/parts/", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
 
         if (!response.ok) {
-          throw new Error("Failed to fetch documents")
+          throw new Error("Failed to fetch parts")
         }
 
         const data = await response.json()
 
-        if (Array.isArray(data.documents)) {
-          setDocuments(data.documents)
+        if (Array.isArray(data.parts)) {
+          setParts(data.parts)
         } else {
-          console.error("Expected an array of documents, but received:", data.documents)
+          console.error("Expected an array of parts, but received:", data.parts)
           setError("Invalid data format received from server")
         }
       } catch (err) {
-        console.error("Error fetching documents:", err)
-        setError("Failed to load documents. Please try again later.")
+        console.error("Error fetching parts:", err)
+        setError("Failed to load parts. Please try again later.")
       } finally {
         setLoading(false)
       }
     }
 
-    fetchDocuments()
+    fetchParts()
   }, [router])
 
   // Handle row selection
@@ -89,56 +94,69 @@ const DocumentPage = () => {
     setCheckedItems(updatedCheckedItems)
   }
 
-  // Get selected documents
-  const getSelectedItems = (): Document[] => {
+  // Get selected parts
+  const getSelectedItems = (): Part[] => {
     if (checkedItems.size === 0) {
-      return documents
+      return parts
     }
 
-    return documents.filter((item) => checkedItems.has(item._id))
+    return parts.filter((item) => checkedItems.has(item._id))
   }
 
   // Export to Excel
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.json_to_sheet(getSelectedItems())
-    XLSX.utils.book_append_sheet(wb, ws, "Documents")
-    XLSX.writeFile(wb, "documents.xlsx")
+    XLSX.utils.book_append_sheet(wb, ws, "Parts")
+    XLSX.writeFile(wb, "parts.xlsx")
   }
 
   // Export to PDF
   const exportToPDF = () => {
     const doc = new jsPDF()
     const data = getSelectedItems().map((item) => [
+      item.title,
+      item.type,
       item.name,
-      item.description.substring(0, 50) + (item.description.length > 50 ? "..." : ""),
-      item.fileUrl,
-      item.createdAt || "N/A",
-      item.updatedAt || "N/A",
+      item.revision,
+      item.description.substring(0, 20) + (item.description.length > 20 ? "..." : ""),
+      item.revisionComment.substring(0, 20) + (item.revisionComment.length > 20 ? "..." : ""),
+      item.project,
+      item.organization,
+      item.owner,
+      item.creationDate,
     ])
 
     doc.autoTable({
-      head: [["Name", "Description", "File URL", "Created At", "Updated At"]],
+      head: [
+        [
+          "Title",
+          "Type",
+          "Name",
+          "Revision",
+          "Description",
+          "Revision Comment",
+          "Project",
+          "Organization",
+          "Owner",
+          "Creation Date",
+        ],
+      ],
       body: data,
       styles: { fontSize: 8, cellPadding: 1 },
       columnStyles: {
-        1: { cellWidth: 40 },
-        2: { cellWidth: 40 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 20 },
       },
     })
-    doc.save("documents.pdf")
-  }
-
-  // Handle file download
-  const handleDownload = (fileUrl: string) => {
-    window.open(fileUrl, "_blank")
+    doc.save("parts.pdf")
   }
 
   return (
     <DashboardLayout>
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Parts Table</h1>
           <div className="flex space-x-2">
             <Button onClick={exportToExcel} variant="outline" size="sm" className="flex items-center">
               <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -177,23 +195,30 @@ const DocumentPage = () => {
                         <th className="p-3 text-left w-10">
                           <span className="sr-only">Select</span>
                         </th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Title</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Type</th>
                         <th className="p-3 text-left font-medium text-white text-sm">Name</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Revision</th>
                         <th className="p-3 text-left font-medium text-white text-sm">Description</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">File URL</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Created At</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Updated At</th>
-                        <th className="p-3 text-left font-medium text-white text-sm w-20">Actions</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Revision Comment</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Project</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Organization</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Owner</th>
+                        <th className="p-3 text-left font-medium text-white text-sm">Creation Date</th>
+                        <th className="p-3 text-left font-medium text-white text-sm w-10">
+                          <span className="sr-only">Actions</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {documents.length === 0 ? (
+                      {parts.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center p-8 text-gray-500">
-                            No documents found.
+                          <td colSpan={12} className="text-center p-8 text-gray-500">
+                            No parts found.
                           </td>
                         </tr>
                       ) : (
-                        documents.map((item) => {
+                        parts.map((item) => {
                           const isSelected = selectedRow === item._id
                           const isChecked = checkedItems.has(item._id)
 
@@ -214,32 +239,17 @@ const DocumentPage = () => {
                                   onClick={(e) => handleCheckboxChange(item._id, e)}
                                 />
                               </td>
+                              <td className="p-3 text-sm">{item.title}</td>
+                              <td className="p-3 text-sm">{item.type}</td>
                               <td className="p-3 text-sm">{item.name}</td>
-                              <td className="p-3 text-sm max-w-[300px] truncate">{item.description}</td>
-                              <td className="p-3 text-sm max-w-[200px] truncate">
-                                <a
-                                  href={item.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {item.fileUrl}
-                                </a>
-                              </td>
-                              <td className="p-3 text-sm">{item.createdAt || "N/A"}</td>
-                              <td className="p-3 text-sm">{item.updatedAt || "N/A"}</td>
-                              <td className="p-3 flex space-x-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownload(item.fileUrl)
-                                  }}
-                                >
-                                  <Download className="h-4 w-4 text-gray-500" />
-                                </Button>
+                              <td className="p-3 text-sm">{item.revision}</td>
+                              <td className="p-3 text-sm max-w-[200px] truncate">{item.description}</td>
+                              <td className="p-3 text-sm max-w-[200px] truncate">{item.revisionComment}</td>
+                              <td className="p-3 text-sm">{item.project}</td>
+                              <td className="p-3 text-sm">{item.organization}</td>
+                              <td className="p-3 text-sm">{item.owner}</td>
+                              <td className="p-3 text-sm">{item.creationDate}</td>
+                              <td className="p-3 w-10">
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
                                   <Eye className="h-4 w-4 text-gray-500" />
                                 </Button>
@@ -260,5 +270,5 @@ const DocumentPage = () => {
   )
 }
 
-export default DocumentPage
+export default PartPage
 
