@@ -5,11 +5,23 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Eye, AlertCircle, FileText, FileSpreadsheet, Download } from "lucide-react"
+import { Eye, AlertCircle, FileText, FileSpreadsheet, Download, Plus, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/components/ui/use-toast"
 import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
 import "jspdf-autotable"
@@ -24,51 +36,68 @@ interface Document {
   updatedAt?: string
 }
 
+// Interface for form data
+interface DocumentFormData {
+  name: string
+  description: string
+  fileUrl: string
+}
+
 const DocumentPage = () => {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState<string | null>(null)
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [currentDocument, setCurrentDocument] = useState<Document | null>(null)
+  const [formData, setFormData] = useState<DocumentFormData>({
+    name: "",
+    description: "",
+    fileUrl: "",
+  })
   const router = useRouter()
 
   useEffect(() => {
+    fetchDocuments()
+  }, [router])
+
+  const fetchDocuments = async () => {
     const token = localStorage.getItem("authToken")
     if (!token) {
       router.push("/")
       return
     }
 
-    const fetchDocuments = async () => {
-      try {
-        const response = await fetch("https://skyronerp.onrender.com/api/documents/", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+    setLoading(true)
+    try {
+      const response = await fetch("https://skyronerp.onrender.com/api/documents/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch documents")
-        }
-
-        const data = await response.json()
-
-        if (Array.isArray(data.documents)) {
-          setDocuments(data.documents)
-        } else {
-          console.error("Expected an array of documents, but received:", data.documents)
-          setError("Invalid data format received from server")
-        }
-      } catch (err) {
-        console.error("Error fetching documents:", err)
-        setError("Failed to load documents. Please try again later.")
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        throw new Error("Failed to fetch documents")
       }
-    }
 
-    fetchDocuments()
-  }, [router])
+      const data = await response.json()
+
+      if (Array.isArray(data.documents)) {
+        setDocuments(data.documents)
+      } else {
+        console.error("Expected an array of documents, but received:", data.documents)
+        setError("Invalid data format received from server")
+      }
+    } catch (err) {
+      console.error("Error fetching documents:", err)
+      setError("Failed to load documents. Please try again later.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Handle row selection
   const selectRow = (id: string) => {
@@ -134,12 +163,170 @@ const DocumentPage = () => {
     window.open(fileUrl, "_blank")
   }
 
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData({
+      ...formData,
+      [name]: value,
+    })
+  }
+
+  // Open create document dialog
+  const openCreateDialog = () => {
+    setFormData({
+      name: "",
+      description: "",
+      fileUrl: "",
+    })
+    setIsCreateDialogOpen(true)
+  }
+
+  // Open edit document dialog
+  const openEditDialog = (document: Document, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentDocument(document)
+    setFormData({
+      name: document.name,
+      description: document.description,
+      fileUrl: document.fileUrl,
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (document: Document, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCurrentDocument(document)
+    setIsDeleteDialogOpen(true)
+  }
+
+  // Create document
+  const createDocument = async () => {
+    const token = localStorage.getItem("authToken")
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    try {
+      const response = await fetch("https://skyronerp.onrender.com/api/documents/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create document")
+      }
+
+      await fetchDocuments()
+      setIsCreateDialogOpen(false)
+      toast({
+        title: "Success",
+        description: "Document created successfully",
+      })
+    } catch (err) {
+      console.error("Error creating document:", err)
+      toast({
+        title: "Error",
+        description: "Failed to create document. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Update document
+  const updateDocument = async () => {
+    if (!currentDocument) return
+
+    const token = localStorage.getItem("authToken")
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    try {
+      const response = await fetch(`https://skyronerp.onrender.com/api/documents/${currentDocument._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update document")
+      }
+
+      await fetchDocuments()
+      setIsEditDialogOpen(false)
+      toast({
+        title: "Success",
+        description: "Document updated successfully",
+      })
+    } catch (err) {
+      console.error("Error updating document:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update document. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Delete document
+  const deleteDocument = async () => {
+    if (!currentDocument) return
+
+    const token = localStorage.getItem("authToken")
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    try {
+      const response = await fetch(`https://skyronerp.onrender.com/api/documents/${currentDocument._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete document")
+      }
+
+      await fetchDocuments()
+      setIsDeleteDialogOpen(false)
+      toast({
+        title: "Success",
+        description: "Document deleted successfully",
+      })
+    } catch (err) {
+      console.error("Error deleting document:", err)
+      toast({
+        title: "Error",
+        description: "Failed to delete document. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
           <div className="flex space-x-2">
+            <Button onClick={openCreateDialog} variant="default" size="sm" className="flex items-center">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Document
+            </Button>
             <Button onClick={exportToExcel} variant="outline" size="sm" className="flex items-center">
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export to Excel
@@ -182,7 +369,7 @@ const DocumentPage = () => {
                         <th className="p-3 text-left font-medium text-white text-sm">File URL</th>
                         <th className="p-3 text-left font-medium text-white text-sm">Created At</th>
                         <th className="p-3 text-left font-medium text-white text-sm">Updated At</th>
-                        <th className="p-3 text-left font-medium text-white text-sm w-20">Actions</th>
+                        <th className="p-3 text-left font-medium text-white text-sm w-32">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -240,8 +427,32 @@ const DocumentPage = () => {
                                 >
                                   <Download className="h-4 w-4 text-gray-500" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    window.open(item.fileUrl, "_blank")
+                                  }}
+                                >
                                   <Eye className="h-4 w-4 text-gray-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => openEditDialog(item, e)}
+                                >
+                                  <Edit className="h-4 w-4 text-blue-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => openDeleteDialog(item, e)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
                                 </Button>
                               </td>
                             </tr>
@@ -256,6 +467,122 @@ const DocumentPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Document Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Document</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Document name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="Document description"
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="fileUrl">File URL</Label>
+              <Input
+                id="fileUrl"
+                name="fileUrl"
+                value={formData.fileUrl}
+                onChange={handleInputChange}
+                placeholder="https://example.com/file.pdf"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createDocument}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Document Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Document</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Document name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="Document description"
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-fileUrl">File URL</Label>
+              <Input
+                id="edit-fileUrl"
+                name="fileUrl"
+                value={formData.fileUrl}
+                onChange={handleInputChange}
+                placeholder="https://example.com/file.pdf"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={updateDocument}>Update</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the document "{currentDocument?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={deleteDocument}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }
