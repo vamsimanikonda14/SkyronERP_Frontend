@@ -5,7 +5,19 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ChevronDown, Cog, FileText, Home, LogOut, Search, Table, User } from "lucide-react"
+import {
+  Bell,
+  ChevronDown,
+  Settings,
+  FileText,
+  Home,
+  LogOut,
+  Search,
+  Database,
+  Package,
+  ClipboardList,
+  User,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,6 +34,10 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [username, setUsername] = useState("")
+  const [newRequestsCount, setNewRequestsCount] = useState(0)
+  const [notificationsVisible, setNotificationsVisible] = useState(false)
+  const [newRequests, setNewRequests] = useState<any[]>([]) // Use appropriate type for requests
+
   const pathname = usePathname()
   const router = useRouter()
 
@@ -36,7 +52,55 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         console.error("Error parsing user data:", err)
       }
     }
+
+    // Fetch new requests count and details from API
+    fetchNewRequests()
   }, [])
+
+  const fetchNewRequests = async () => {
+    try {
+      // Get the auth token from localStorage
+      const authToken = localStorage.getItem("authToken");
+  
+      if (!authToken) {
+        console.error("Authentication token not found");
+        return;
+      }
+  
+      // Debugging: log token and headers
+      console.log('Auth Token:', authToken);
+  
+      const response = await fetch("https://skyronerp.onrender.com/api/requests/allrequests", {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (!response.ok) {
+        if (response.status === 403) {
+          console.error("Authorization error: You may need to log in again.");
+          // Optional: Handle re-login or redirect to login
+          return;
+        }
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+  
+      const data = await response.json();
+      setNewRequests(data);
+      setNewRequestsCount(data.length); // Assuming data is an array of requests
+    } catch (error) {
+      console.error("Error fetching new requests:", error);
+      // Handle the error gracefully
+      setNewRequests([]);
+      setNewRequestsCount(0);
+    }
+  };
+  
+
+  const toggleNotifications = () => {
+    setNotificationsVisible((prev) => !prev)
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("authToken")
@@ -54,7 +118,36 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Link>
         </div>
 
-        <div>
+        {/* User Profile and Notification */}
+        <div className="flex items-center gap-3">
+          {/* Notification Icon */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="relative" onClick={toggleNotifications}>
+                <Bell className="h-5 w-5" />
+                {/* Notification Badge */}
+                {newRequestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {newRequestsCount}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60 mt-2 bg-white shadow-lg rounded-md p-2 text-black">
+              {newRequests.length > 0 ? (
+                newRequests.map((request, index) => (
+                  <DropdownMenuItem key={index} className="text-sm p-2 text-black">
+  {request.title}
+</DropdownMenuItem>
+
+                ))
+              ) : (
+                <DropdownMenuItem className="text-sm p-2 text-black">No new requests</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
@@ -120,7 +213,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   pathname === "/ebom" ? "bg-[#f79c34] text-white" : ""
                 }`}
               >
-                <Table className="h-5 w-5" />
+                <Database className="h-5 w-5" />
                 EBOM
               </Link>
             </li>
@@ -131,11 +224,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   pathname === "/parts" ? "bg-[#f79c34] text-white" : ""
                 }`}
               >
-                <Table className="h-5 w-5" />
+                <Package className="h-5 w-5" />
                 Parts
               </Link>
             </li>
-            
+            <li>
+              <Link
+                href="/requests"
+                className={`flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[#f79c34] hover:text-white transition-colors ${
+                  pathname === "/requests" ? "bg-[#f79c34] text-white" : ""
+                }`}
+              >
+                <ClipboardList className="h-5 w-5" />
+                New requests
+              </Link>
+            </li>
             <li>
               <Link
                 href="/apis"
@@ -143,7 +246,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   pathname === "/apis" ? "bg-[#f79c34] text-white" : ""
                 }`}
               >
-                <Cog className="h-5 w-5" />
+                <Settings className="h-5 w-5" />
                 API's
               </Link>
             </li>
@@ -152,7 +255,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <main className="ml-[250px] mt-[53px] flex-1">{children}</main>
+      <main className="ml-[250px] mt-[53px] flex-1 p-6">{children}</main>
     </div>
   )
 }

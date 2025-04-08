@@ -1,13 +1,11 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Eye, AlertCircle, FileText, FileSpreadsheet, Download, Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, FileSpreadsheet, FileIcon as FilePdf } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -22,6 +20,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
 import "jspdf-autotable"
@@ -31,16 +31,22 @@ interface Document {
   _id: string
   name: string
   description: string
-  fileUrl: string
-  createdAt?: string
-  updatedAt?: string
+  title: string
+  type: string
+  revision: string
+  originated: Date
+  createdAt: Date
 }
 
 // Interface for form data
 interface DocumentFormData {
   name: string
   description: string
-  fileUrl: string
+  title: string
+  type: string
+  revision: string
+  originated: string // We'll handle this as a string (date in YYYY-MM-DD format)
+  createdAt: string
 }
 
 const DocumentPage = () => {
@@ -56,7 +62,11 @@ const DocumentPage = () => {
   const [formData, setFormData] = useState<DocumentFormData>({
     name: "",
     description: "",
-    fileUrl: "",
+    title: "",
+    type: "Document", // default to "Document"
+    revision: "0", // default to "0"
+    originated: "", // default to empty string
+    createdAt: "", // default to empty string
   })
   const router = useRouter()
 
@@ -141,13 +151,15 @@ const DocumentPage = () => {
     const data = getSelectedItems().map((item) => [
       item.name,
       item.description.substring(0, 50) + (item.description.length > 50 ? "..." : ""),
-      item.fileUrl,
-      item.createdAt || "N/A",
-      item.updatedAt || "N/A",
+      item.title,
+      item.type,
+      item.revision,
+      new Date(item.originated).toLocaleDateString(),
+      new Date(item.createdAt).toLocaleDateString(),
     ])
 
     doc.autoTable({
-      head: [["Name", "Description", "File URL", "Created At", "Updated At"]],
+      head: [["Name", "Description", "Title", "Type", "Revision", "Originated", "Created At"]],
       body: data,
       styles: { fontSize: 8, cellPadding: 1 },
       columnStyles: {
@@ -177,20 +189,54 @@ const DocumentPage = () => {
     setFormData({
       name: "",
       description: "",
-      fileUrl: "",
+      title: "",
+      type: "Document", // default to "Document"
+      revision: "0", // default to "0"
+      originated: new Date().toISOString().split("T")[0], // Default to today
+      createdAt: new Date().toISOString().split("T")[0], // Default to today
     })
     setIsCreateDialogOpen(true)
+  }
+
+  // Add a debug function to help troubleshoot the edit functionality
+  const debugDocumentData = (document: Document | null) => {
+    if (!document) {
+      console.log("No document selected for debugging")
+      return
+    }
+
+    console.log("Document data:", {
+      id: document._id,
+      name: document.name,
+      description: document.description,
+      title: document.title,
+      type: document.type,
+      revision: document.revision,
+      originated: document.originated,
+      createdAt: document.createdAt,
+    })
   }
 
   // Open edit document dialog
   const openEditDialog = (document: Document, e: React.MouseEvent) => {
     e.stopPropagation()
     setCurrentDocument(document)
+
+    // Format dates properly for the form
+    const originatedDate = new Date(document.originated)
+    const createdAtDate = new Date(document.createdAt)
+
     setFormData({
       name: document.name,
       description: document.description,
-      fileUrl: document.fileUrl,
+      title: document.title,
+      type: document.type,
+      revision: document.revision,
+      originated: originatedDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
+      createdAt: createdAtDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
     })
+
+    // Make sure to set this to true to open the dialog
     setIsEditDialogOpen(true)
   }
 
@@ -209,6 +255,23 @@ const DocumentPage = () => {
       return
     }
 
+    // Validate required fields
+    if (
+      !formData.name ||
+      !formData.description ||
+      !formData.title ||
+      !formData.type ||
+      !formData.revision ||
+      !formData.originated
+    ) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       const response = await fetch("https://skyronerp.onrender.com/api/documents/create", {
         method: "POST",
@@ -216,8 +279,21 @@ const DocumentPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          originated: new Date(formData.originated).toISOString(),
+          createdAt: new Date(formData.createdAt || new Date()).toISOString(),
+        }),
       })
+
+      if (response.status === 409) {
+        toast({
+          title: "Error",
+          description: "A document with this type, name, and revision already exists",
+          variant: "destructive",
+        })
+        return
+      }
 
       if (!response.ok) {
         throw new Error("Failed to create document")
@@ -249,18 +325,60 @@ const DocumentPage = () => {
       return
     }
 
+    // Validate required fields
+    if (
+      !formData.name ||
+      !formData.description ||
+      !formData.title ||
+      !formData.type ||
+      !formData.revision ||
+      !formData.originated
+    ) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
+      // Log the data being sent for debugging
+      console.log("Updating document with data:", {
+        ...formData,
+        originated: new Date(formData.originated).toISOString(),
+        createdAt: new Date(formData.createdAt).toISOString(),
+      })
+
       const response = await fetch(`https://skyronerp.onrender.com/api/documents/${currentDocument._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          originated: new Date(formData.originated).toISOString(),
+          createdAt: new Date(formData.createdAt).toISOString(),
+        }),
       })
 
+      // Log the response for debugging
+      console.log("Update response status:", response.status)
+
+      if (response.status === 409) {
+        toast({
+          title: "Error",
+          description: "A document with this type, name, and revision already exists",
+          variant: "destructive",
+        })
+        return
+      }
+
       if (!response.ok) {
-        throw new Error("Failed to update document")
+        const errorData = await response.json().catch(() => ({}))
+        console.error("Error response:", errorData)
+        throw new Error(errorData.message || "Failed to update document")
       }
 
       await fetchDocuments()
@@ -273,7 +391,7 @@ const DocumentPage = () => {
       console.error("Error updating document:", err)
       toast({
         title: "Error",
-        description: "Failed to update document. Please try again.",
+        description: `Failed to update document: ${err instanceof Error ? err.message : "Unknown error"}`,
         variant: "destructive",
       })
     }
@@ -319,266 +437,439 @@ const DocumentPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
-          <div className="flex space-x-2">
-            <Button onClick={openCreateDialog} variant="default" size="sm" className="flex items-center">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Document
-            </Button>
-            <Button onClick={exportToExcel} variant="outline" size="sm" className="flex items-center">
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Export to Excel
-            </Button>
-            <Button onClick={exportToPDF} variant="outline" size="sm" className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Export to PDF
-            </Button>
+      <div className="flex flex-col h-full bg-slate-50">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+            <div className="flex space-x-2">
+              <Button onClick={openCreateDialog} variant="default" size="sm" className="flex items-center">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Document
+              </Button>
+              <Button onClick={exportToExcel} variant="outline" size="sm" className="flex items-center">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button onClick={exportToPDF} variant="outline" size="sm" className="flex items-center">
+                <FilePdf className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            {error && (
-              <div className="flex items-center gap-2 p-4 text-red-600 bg-red-50 border-l-4 border-red-600">
-                <AlertCircle className="h-5 w-5" />
-                <p>{error}</p>
-              </div>
-            )}
+          {loading && (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          )}
 
-            {loading ? (
-              <div className="p-4 space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : (
-              <ScrollArea className="h-[calc(100vh-220px)]">
-                <div className="overflow-x-auto">
-                  <table className="w-full table-auto">
-                    <thead className="bg-orange-500 sticky top-0 z-10">
-                      <tr>
-                        <th className="p-3 text-left w-10">
-                          <span className="sr-only">Select</span>
-                        </th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Name</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Description</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">File URL</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Created At</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Updated At</th>
-                        <th className="p-3 text-left font-medium text-white text-sm w-32">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {documents.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="text-center p-8 text-gray-500">
-                            No documents found.
-                          </td>
-                        </tr>
-                      ) : (
-                        documents.map((item) => {
-                          const isSelected = selectedRow === item._id
-                          const isChecked = checkedItems.has(item._id)
+          {error && <div className="p-4 bg-red-50 text-red-600 rounded-md border border-red-200">{error}</div>}
 
-                          return (
-                            <tr
-                              key={item._id}
-                              className={`border-t border-gray-200 hover:bg-gray-50 transition-colors ${
-                                isSelected ? "bg-blue-50" : ""
-                              }`}
-                              onClick={() => selectRow(item._id)}
-                            >
-                              <td className="p-3 w-10">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  checked={isChecked}
-                                  onChange={() => {}}
-                                  onClick={(e) => handleCheckboxChange(item._id, e)}
-                                />
-                              </td>
-                              <td className="p-3 text-sm">{item.name}</td>
-                              <td className="p-3 text-sm max-w-[300px] truncate">{item.description}</td>
-                              <td className="p-3 text-sm max-w-[200px] truncate">
-                                <a
-                                  href={item.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {item.fileUrl}
-                                </a>
-                              </td>
-                              <td className="p-3 text-sm">{item.createdAt || "N/A"}</td>
-                              <td className="p-3 text-sm">{item.updatedAt || "N/A"}</td>
-                              <td className="p-3 flex space-x-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownload(item.fileUrl)
-                                  }}
-                                >
-                                  <Download className="h-4 w-4 text-gray-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    window.open(item.fileUrl, "_blank")
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 text-gray-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => openEditDialog(item, e)}
-                                >
-                                  <Edit className="h-4 w-4 text-blue-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => openDeleteDialog(item, e)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+          {!loading && !error && (
+            <div className="bg-white rounded-lg border shadow-sm">
+              <ScrollArea className="h-[calc(100vh-220px)] w-full">
+                <Table>
+                  <TableHeader className="bg-[#f79c34] text-white">
+                    <TableRow >
+                     
+                      <TableHead >
+                        <Checkbox
+                          checked={documents.length > 0 && checkedItems.size === documents.length}
+                          onCheckedChange={(checked) => {
+                            setCheckedItems(checked ? new Set(documents.map((doc) => doc._id)) : new Set())
+                          }}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Revision</TableHead>
+                      <TableHead>Originated</TableHead>
+                      <TableHead>Created At</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {documents.map((item) => {
+                      const isChecked = checkedItems.has(item._id)
+                      const isSelected = selectedRow === item._id
+                      return (
+                        <TableRow
+                          key={item._id}
+                          className={`cursor-pointer ${isSelected ? "bg-slate-100" : ""} ${
+                            isChecked ? "bg-slate-50" : ""
+                          }`}
+                          onClick={() => selectRow(item._id)}
+                        >
+                          <TableCell className="p-2">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                const updatedCheckedItems = new Set(checkedItems)
+                                if (checked) {
+                                  updatedCheckedItems.add(item._id)
+                                } else {
+                                  updatedCheckedItems.delete(item._id)
+                                }
+                                setCheckedItems(updatedCheckedItems)
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label={`Select ${item.name}`}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{item.description}</TableCell>
+                          <TableCell>{item.title}</TableCell>
+                          <TableCell>{item.type}</TableCell>
+                          <TableCell>{item.revision}</TableCell>
+                          <TableCell>{new Date(item.originated).toLocaleDateString()}</TableCell>
+                          <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  console.log("Edit button clicked for document:", item._id)
+                                  debugDocumentData(item)
+                                  openEditDialog(item, e)
+                                }}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                              >
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                              <Button
+                                onClick={(e) => openDeleteDialog(item, e)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {documents.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="h-24 text-center">
+                          No documents found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Create Document Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Create New Document</DialogTitle>
+            <DialogTitle>Create Document</DialogTitle>
+            <DialogDescription>
+              Fill in the details below to create a new document. Note: The combination of Type, Name, and Revision must
+              be unique.
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="name">
+                Name <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Document name"
+                placeholder="Enter document name"
+                required
+                className="mt-1"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+            <div>
+              <Label htmlFor="description">
+                Description <span className="text-red-500">*</span>
+              </Label>
               <Textarea
                 id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                placeholder="Document description"
-                rows={4}
+                placeholder="Enter document description"
+                required
+                className="mt-1 min-h-[80px]"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="fileUrl">File URL</Label>
+            <div>
+              <Label htmlFor="title">
+                Title <span className="text-red-500">*</span>
+              </Label>
               <Input
-                id="fileUrl"
-                name="fileUrl"
-                value={formData.fileUrl}
+                id="title"
+                name="title"
+                value={formData.title}
                 onChange={handleInputChange}
-                placeholder="https://example.com/file.pdf"
+                placeholder="Enter document title"
+                required
+                className="mt-1"
               />
+            </div>
+
+            {/* Type and Revision in one row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="type">
+                  Type <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="type"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleInputChange}
+                  placeholder="Enter document type"
+                  required
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
+              </div>
+              <div>
+                <Label htmlFor="revision">
+                  Revision <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="revision"
+                  name="revision"
+                  value={formData.revision}
+                  onChange={handleInputChange}
+                  placeholder="Enter document revision"
+                  required
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
+              </div>
+            </div>
+
+            {/* Originated and Created At in one row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="originated">
+                  Originated <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="originated"
+                  name="originated"
+                  type="date"
+                  value={formData.originated}
+                  onChange={handleInputChange}
+                  required
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="createdAt">Created At</Label>
+                <Input
+                  id="createdAt"
+                  name="createdAt"
+                  type="date"
+                  value={formData.createdAt}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Defaults to current date if empty</p>
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={createDocument}>Create</Button>
+            <Button onClick={createDocument} variant="default">
+              Create Document
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Document Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          console.log("Edit dialog state changing to:", open)
+          setIsEditDialogOpen(open)
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Document</DialogTitle>
+            <DialogDescription>
+              Modify the details of the document. Note: The combination of Type, Name, and Revision must be unique.
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-name">Name</Label>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="edit-name">
+                Name <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="edit-name"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Document name"
+                placeholder="Enter document name"
+                required
+                className="mt-1"
               />
+              <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-description">Description</Label>
+            <div>
+              <Label htmlFor="edit-description">
+                Description <span className="text-red-500">*</span>
+              </Label>
               <Textarea
                 id="edit-description"
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                placeholder="Document description"
-                rows={4}
+                placeholder="Enter document description"
+                required
+                className="mt-1 min-h-[80px]"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-fileUrl">File URL</Label>
+            <div>
+              <Label htmlFor="edit-title">
+                Title <span className="text-red-500">*</span>
+              </Label>
               <Input
-                id="edit-fileUrl"
-                name="fileUrl"
-                value={formData.fileUrl}
+                id="edit-title"
+                name="title"
+                value={formData.title}
                 onChange={handleInputChange}
-                placeholder="https://example.com/file.pdf"
+                placeholder="Enter document title"
+                required
+                className="mt-1"
               />
+            </div>
+
+            {/* Type and Revision in one row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-type">
+                  Type <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit-type"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleInputChange}
+                  placeholder="Enter document type"
+                  required
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
+              </div>
+              <div>
+                <Label htmlFor="edit-revision">
+                  Revision <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit-revision"
+                  name="revision"
+                  value={formData.revision}
+                  onChange={handleInputChange}
+                  placeholder="Enter document revision"
+                  required
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
+              </div>
+            </div>
+
+            {/* Originated and Created At in one row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-originated">
+                  Originated <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit-originated"
+                  name="originated"
+                  type="date"
+                  value={formData.originated}
+                  onChange={handleInputChange}
+                  required
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-createdAt">Created At</Label>
+                <Input
+                  id="edit-createdAt"
+                  name="createdAt"
+                  type="date"
+                  value={formData.createdAt}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={updateDocument}>Update</Button>
+            <Button onClick={updateDocument} variant="default">
+              Update Document
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Document Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Delete Document</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the document "{currentDocument?.name}"? This action cannot be undone.
+              Are you sure you want to delete this document? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-4">
+            {currentDocument && (
+              <div className="bg-red-50 p-4 rounded-md border border-red-200 mb-4">
+                <p className="font-medium">You are about to delete:</p>
+                <p>
+                  <span className="font-medium">Name:</span> {currentDocument.name}
+                </p>
+                <p>
+                  <span className="font-medium">Type:</span> {currentDocument.type}
+                </p>
+                <p>
+                  <span className="font-medium">Revision:</span> {currentDocument.revision}
+                </p>
+              </div>
+            )}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={deleteDocument}>
-              Delete
+            <Button onClick={deleteDocument} variant="destructive" className="flex items-center">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Document
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -588,4 +879,3 @@ const DocumentPage = () => {
 }
 
 export default DocumentPage
-
