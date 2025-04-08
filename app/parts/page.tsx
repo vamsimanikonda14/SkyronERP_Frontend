@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard-layout"
@@ -8,7 +9,7 @@ import { AlertCircle, FileText, FileSpreadsheet, Pencil, Trash2, Plus } from "lu
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
 import "jspdf-autotable"
@@ -28,96 +29,92 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "@/components/ui/use-toast"
 
-// Interface for documents
-interface Document {
+// Interfaces for parts
+interface Part {
   _id: string
-  name: string
-  description: string
   title: string
   type: string
+  name: string
   revision: string
-  originated: Date
-  createdAt: Date
+  description: string
+  revisionComment: string
+  project: string
+  organization: string
+  owner: string
+  creationDate: string
 }
 
 // Form validation schema
-const documentFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(1, "Description is required"),
+const partFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   type: z.string().min(1, "Type is required"),
+  name: z.string().min(1, "Name is required"),
   revision: z.string().min(1, "Revision is required"),
-  originated: z.string().min(1, "Originated date is required"),
-  createdAt: z.string().optional(),
+  description: z.string().optional(),
+  revisionComment: z.string().optional(),
+  project: z.string().min(1, "Project is required"),
+  organization: z.string().min(1, "Organization is required"),
+  owner: z.string().optional(),
+  creationDate: z.string().optional(),
 })
 
-type DocumentFormValues = z.infer<typeof documentFormSchema>
+type PartFormValues = z.infer<typeof partFormSchema>
 
-const DocumentPage = () => {
-  const [documents, setDocuments] = useState<Document[]>([])
+const PartPage = () => {
+  const [parts, setParts] = useState<Part[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState<string | null>(null)
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
+  const router = useRouter()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [currentDocument, setCurrentDocument] = useState<Document | null>(null)
+  const [currentPart, setCurrentPart] = useState<Part | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const router = useRouter()
 
-  // Form setup for create/edit
-  const form = useForm<DocumentFormValues>({
-    resolver: zodResolver(documentFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      title: "",
-      type: "Document", // default to "Document"
-      revision: "0", // default to "0"
-      originated: new Date().toISOString().split("T")[0], // Default to today
-      createdAt: new Date().toISOString().split("T")[0], // Default to today
-    },
-  })
-
-  useEffect(() => {
-    fetchDocuments()
-  }, [router])
-
-  const fetchDocuments = async () => {
+  const fetchParts = async () => {
     const token = localStorage.getItem("authToken")
-    if (!token) {
-      router.push("/")
-      return
-    }
+    if (!token) return
 
     setLoading(true)
     try {
-      const response = await fetch("https://skyronerp.onrender.com/api/documents/", {
+      const response = await fetch("https://skyronerp.onrender.com/api/parts/", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
 
       if (!response.ok) {
-        throw new Error("Failed to fetch documents")
+        throw new Error("Failed to fetch parts")
       }
 
       const data = await response.json()
 
-      if (Array.isArray(data.documents)) {
-        setDocuments(data.documents)
+      if (Array.isArray(data.parts)) {
+        setParts(data.parts)
+        console.log("Fetched parts:", data.parts)
       } else {
-        console.error("Expected an array of documents, but received:", data.documents)
+        console.error("Expected an array of parts, but received:", data.parts)
         setError("Invalid data format received from server")
       }
     } catch (err) {
-      console.error("Error fetching documents:", err)
-      setError("Failed to load documents. Please try again later.")
+      console.error("Error fetching parts:", err)
+      setError("Failed to load parts. Please try again later.")
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken")
+    if (!token) {
+      router.push("/")
+      return
+    }
+
+    fetchParts()
+  }, [router])
 
   // Handle row selection
   const selectRow = (id: string) => {
@@ -138,143 +135,194 @@ const DocumentPage = () => {
     setCheckedItems(updatedCheckedItems)
   }
 
-  // Get selected documents
-  const getSelectedItems = (): Document[] => {
+  // Get selected parts
+  const getSelectedItems = (): Part[] => {
     if (checkedItems.size === 0) {
-      return documents
+      return parts
     }
 
-    return documents.filter((item) => checkedItems.has(item._id))
+    return parts.filter((item) => checkedItems.has(item._id))
   }
 
   // Export to Excel
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.json_to_sheet(getSelectedItems())
-    XLSX.utils.book_append_sheet(wb, ws, "Documents")
-    XLSX.writeFile(wb, "documents.xlsx")
+    XLSX.utils.book_append_sheet(wb, ws, "Parts")
+    XLSX.writeFile(wb, "parts.xlsx")
   }
 
   // Export to PDF
   const exportToPDF = () => {
     const doc = new jsPDF()
     const data = getSelectedItems().map((item) => [
-      item.name,
-      item.description.substring(0, 50) + (item.description.length > 50 ? "..." : ""),
       item.title,
       item.type,
+      item.name,
       item.revision,
-      new Date(item.originated).toLocaleDateString(),
-      new Date(item.createdAt).toLocaleDateString(),
+      item.description?.substring(0, 20) + (item.description?.length > 20 ? "..." : ""),
+      item.revisionComment?.substring(0, 20) + (item.revisionComment?.length > 20 ? "..." : ""),
+      item.project,
+      item.organization,
+      item.owner,
+      item.creationDate,
     ])
 
     doc.autoTable({
-      head: [["Name", "Description", "Title", "Type", "Revision", "Originated", "Created At"]],
+      head: [
+        [
+          "Title",
+          "Type",
+          "Name",
+          "Revision",
+          "Description",
+          "Revision Comment",
+          "Project",
+          "Organization",
+          "Owner",
+          "Creation Date",
+        ],
+      ],
       body: data,
       styles: { fontSize: 8, cellPadding: 1 },
       columnStyles: {
-        1: { cellWidth: 40 },
-        2: { cellWidth: 40 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 20 },
       },
     })
-    doc.save("documents.pdf")
+    doc.save("parts.pdf")
   }
 
-  // Reset form with document data for editing
-  const setupEditForm = (document: Document) => {
-    const originatedDate = new Date(document.originated)
-    const createdAtDate = new Date(document.createdAt)
+  // Form setup for create/edit
+  const form = useForm<PartFormValues>({
+    resolver: zodResolver(partFormSchema),
+    defaultValues: {
+      title: "",
+      type: "",
+      name: "",
+      revision: "",
+      description: "",
+      revisionComment: "",
+      project: "",
+      organization: "",
+      owner: "",
+      creationDate: "",
+    },
+  })
 
+  // Reset form with part data for editing
+  const setupEditForm = (part: Part) => {
     form.reset({
-      name: document.name,
-      description: document.description,
-      title: document.title,
-      type: document.type,
-      revision: document.revision,
-      originated: originatedDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
-      createdAt: createdAtDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
+      title: part.title,
+      type: part.type,
+      name: part.name,
+      revision: part.revision,
+      description: part.description,
+      revisionComment: part.revisionComment,
+      project: part.project,
+      organization: part.organization,
+      owner: part.owner,
+      creationDate: part.creationDate,
     })
-    setCurrentDocument(document)
+    setCurrentPart(part)
     setIsEditDialogOpen(true)
   }
 
-  // Open create document dialog
+  // Open create dialog
   const openCreateDialog = () => {
     form.reset({
-      name: "",
-      description: "",
       title: "",
-      type: "Document", // default to "Document"
-      revision: "0", // default to "0"
-      originated: new Date().toISOString().split("T")[0], // Default to today
-      createdAt: new Date().toISOString().split("T")[0], // Default to today
+      type: "",
+      name: "",
+      revision: "",
+      description: "",
+      revisionComment: "",
+      project: "",
+      organization: "",
+      owner: "",
+      creationDate: new Date().toISOString().split("T")[0],
     })
     setIsCreateDialogOpen(true)
   }
 
-  // Open delete confirmation dialog
-  const openDeleteDialog = (document: Document, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setCurrentDocument(document)
+  // Open delete confirmation
+  const openDeleteDialog = (part: Part, event: React.MouseEvent) => {
+    event.stopPropagation()
+    setCurrentPart(part)
     setIsDeleteDialogOpen(true)
   }
 
-  // Handle form submission
-  const onSubmit = (data: DocumentFormValues) => {
-    if (isCreateDialogOpen) {
-      createDocument(data)
-    } else if (isEditDialogOpen) {
-      updateDocument(data)
-    }
-  }
-
-  // Create document
-  const createDocument = async (data: DocumentFormValues) => {
+  // Create a new part
+  const createPart = async (data: PartFormValues) => {
     const token = localStorage.getItem("authToken")
     if (!token) {
-      router.push("/")
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create parts",
+        variant: "destructive",
+      })
       return
     }
 
     setIsSubmitting(true)
     try {
-      const response = await fetch("https://skyronerp.onrender.com/api/documents/create", {
+      console.log("Sending data to API:", data)
+
+      // Remove any undefined or null values
+      const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v != null && v !== ""))
+
+      const response = await fetch("https://skyronerp.onrender.com/api/parts/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...data,
-          originated: new Date(data.originated).toISOString(),
-          createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
-        }),
+        body: JSON.stringify(cleanData),
       })
 
-      if (response.status === 409) {
+      const responseText = await response.text()
+      console.log("API Response:", response.status, responseText)
+
+      if (!response.ok) {
+        throw new Error(`Failed to create part: ${response.status} ${responseText}`)
+      }
+
+      // Parse the response if it's JSON
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (e) {
+        console.error("Error parsing response:", e)
+        // If we can't parse the response but the request was successful,
+        // we'll just refresh the parts list
+        fetchParts()
+        setIsCreateDialogOpen(false)
         toast({
-          title: "Error",
-          description: "A document with this type, name, and revision already exists",
-          variant: "destructive",
+          title: "Success",
+          description: "Part created successfully",
         })
         return
       }
 
-      if (!response.ok) {
-        throw new Error("Failed to create document")
+      // Refresh parts list
+      if (result.part) {
+        const updatedParts = [...parts, result.part]
+        setParts(updatedParts)
+      } else {
+        // If the API doesn't return the created part, refresh the list
+        fetchParts()
       }
 
-      await fetchDocuments()
       setIsCreateDialogOpen(false)
       toast({
         title: "Success",
-        description: "Document created successfully",
+        description: "Part created successfully",
       })
     } catch (err) {
-      console.error("Error creating document:", err)
+      console.error("Error creating part:", err)
       toast({
         title: "Error",
-        description: "Failed to create document. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to create part. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -282,57 +330,56 @@ const DocumentPage = () => {
     }
   }
 
-  // Update document
-  const updateDocument = async (data: DocumentFormValues) => {
-    if (!currentDocument) return
+  // Update an existing part
+  const updatePart = async (data: PartFormValues) => {
+    if (!currentPart) return
 
     const token = localStorage.getItem("authToken")
     if (!token) {
-      router.push("/")
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to update parts",
+        variant: "destructive",
+      })
       return
     }
 
     setIsSubmitting(true)
     try {
-      const response = await fetch(`https://skyronerp.onrender.com/api/documents/${currentDocument._id}`, {
+      console.log("Updating part with data:", data)
+
+      // Remove any undefined or null values
+      const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v != null && v !== ""))
+
+      const response = await fetch(`https://skyronerp.onrender.com/api/parts/${currentPart._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...data,
-          originated: new Date(data.originated).toISOString(),
-          createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
-        }),
+        body: JSON.stringify(cleanData),
       })
 
-      if (response.status === 409) {
-        toast({
-          title: "Error",
-          description: "A document with this type, name, and revision already exists",
-          variant: "destructive",
-        })
-        return
-      }
+      const responseText = await response.text()
+      console.log("API Response:", response.status, responseText)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("Error response:", errorData)
-        throw new Error(errorData.message || "Failed to update document")
+        throw new Error(`Failed to update part: ${response.status} ${responseText}`)
       }
 
-      await fetchDocuments()
+      // Refresh the parts list instead of trying to update locally
+      fetchParts()
+
       setIsEditDialogOpen(false)
       toast({
         title: "Success",
-        description: "Document updated successfully",
+        description: "Part updated successfully",
       })
     } catch (err) {
-      console.error("Error updating document:", err)
+      console.error("Error updating part:", err)
       toast({
         title: "Error",
-        description: `Failed to update document: ${err instanceof Error ? err.message : "Unknown error"}`,
+        description: err instanceof Error ? err.message : "Failed to update part. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -340,44 +387,63 @@ const DocumentPage = () => {
     }
   }
 
-  // Delete document
-  const deleteDocument = async () => {
-    if (!currentDocument) return
+  // Delete a part
+  const deletePart = async () => {
+    if (!currentPart) return
 
     const token = localStorage.getItem("authToken")
     if (!token) {
-      router.push("/")
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to delete parts",
+        variant: "destructive",
+      })
       return
     }
 
     setIsSubmitting(true)
     try {
-      const response = await fetch(`https://skyronerp.onrender.com/api/documents/${currentDocument._id}`, {
+      const response = await fetch(`https://skyronerp.onrender.com/api/parts/${currentPart._id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
 
+      const responseText = await response.text()
+      console.log("API Response:", response.status, responseText)
+
       if (!response.ok) {
-        throw new Error("Failed to delete document")
+        throw new Error(`Failed to delete part: ${response.status} ${responseText}`)
       }
 
-      await fetchDocuments()
+      // Update parts list
+      const updatedParts = parts.filter((part) => part._id !== currentPart._id)
+      setParts(updatedParts)
+
       setIsDeleteDialogOpen(false)
       toast({
         title: "Success",
-        description: "Document deleted successfully",
+        description: "Part deleted successfully",
       })
     } catch (err) {
-      console.error("Error deleting document:", err)
+      console.error("Error deleting part:", err)
       toast({
         title: "Error",
-        description: "Failed to delete document. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to delete part. Please try again.",
         variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Handle form submission
+  const onSubmit = (data: PartFormValues) => {
+    if (isCreateDialogOpen) {
+      createPart(data)
+    } else if (isEditDialogOpen) {
+      updatePart(data)
     }
   }
 
@@ -385,11 +451,11 @@ const DocumentPage = () => {
     <DashboardLayout>
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Parts Table</h1>
           <div className="flex space-x-2">
             <Button onClick={openCreateDialog} variant="default" size="sm" className="flex items-center">
               <Plus className="h-4 w-4 mr-2" />
-              Create Document
+              Create Part
             </Button>
             <Button onClick={exportToExcel} variant="outline" size="sm" className="flex items-center">
               <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -420,118 +486,145 @@ const DocumentPage = () => {
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : (
-              <ScrollArea className="h-[calc(100vh-220px)]">
-                <div className="overflow-x-auto">
-                  <table className="w-full table-auto">
-                    <thead className="bg-orange-500 sticky top-0 z-10">
-                      <tr>
-                        <th className="p-3 text-left w-10">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            checked={documents.length > 0 && checkedItems.size === documents.length}
-                            onChange={(e) => {
-                              setCheckedItems(e.target.checked ? new Set(documents.map((doc) => doc._id)) : new Set())
-                            }}
-                            aria-label="Select all"
-                          />
-                        </th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Name</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Description</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Title</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Type</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Revision</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Originated</th>
-                        <th className="p-3 text-left font-medium text-white text-sm">Created At</th>
-                        <th className="p-3 text-left font-medium text-white text-sm w-20">
-                          <span className="sr-only">Actions</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {documents.length === 0 ? (
+              <div className="relative">
+                <ScrollArea className="h-[calc(100vh-220px)]">
+                  <div className="min-w-[1200px]">
+                    <table className="w-full table-auto">
+                      <thead className="bg-orange-500 sticky top-0 z-10">
                         <tr>
-                          <td colSpan={9} className="text-center p-8 text-gray-500">
-                            No documents found.
-                          </td>
+                          <th className="p-3 text-left w-10">
+                            <span className="sr-only">Select</span>
+                          </th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Title</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Type</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Name</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Revision</th>
+                          <th className="p-3 text-left font-medium text-white text-sm min-w-[200px]">Description</th>
+                          <th className="p-3 text-left font-medium text-white text-sm min-w-[200px]">
+                            Revision Comment
+                          </th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Project</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Organization</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Owner</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Creation Date</th>
+                          <th className="p-3 text-left font-medium text-white text-sm w-20">
+                            <span className="sr-only">Actions</span>
+                          </th>
                         </tr>
-                      ) : (
-                        documents.map((item) => {
-                          const isSelected = selectedRow === item._id
-                          const isChecked = checkedItems.has(item._id)
+                      </thead>
+                      <tbody>
+                        {parts.length === 0 ? (
+                          <tr>
+                            <td colSpan={12} className="text-center p-8 text-gray-500">
+                              No parts found.
+                            </td>
+                          </tr>
+                        ) : (
+                          parts.map((item) => {
+                            const isSelected = selectedRow === item._id
+                            const isChecked = checkedItems.has(item._id)
 
-                          return (
-                            <tr
-                              key={item._id}
-                              className={`border-t border-gray-200 hover:bg-gray-50 transition-colors ${
-                                isSelected ? "bg-blue-50" : ""
-                              }`}
-                              onClick={() => selectRow(item._id)}
-                            >
-                              <td className="p-3 w-10">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  checked={isChecked}
-                                  onChange={() => {}}
-                                  onClick={(e) => handleCheckboxChange(item._id, e)}
-                                />
-                              </td>
-                              <td className="p-3 text-sm font-medium">{item.name}</td>
-                              <td className="p-3 text-sm max-w-[200px] truncate">{item.description}</td>
-                              <td className="p-3 text-sm">{item.title}</td>
-                              <td className="p-3 text-sm">{item.type}</td>
-                              <td className="p-3 text-sm">{item.revision}</td>
-                              <td className="p-3 text-sm">{new Date(item.originated).toLocaleDateString()}</td>
-                              <td className="p-3 text-sm">{new Date(item.createdAt).toLocaleDateString()}</td>
-                              <td className="p-3 w-20">
-                                <div className="flex space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setupEditForm(item)
-                                    }}
-                                  >
-                                    <Pencil className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={(e) => openDeleteDialog(item, e)}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </ScrollArea>
+                            return (
+                              <tr
+                                key={item._id}
+                                className={`border-t border-gray-200 hover:bg-gray-50 transition-colors ${
+                                  isSelected ? "bg-blue-50" : ""
+                                }`}
+                                onClick={() => selectRow(item._id)}
+                              >
+                                <td className="p-3 w-10">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    checked={isChecked}
+                                    onChange={() => {}}
+                                    onClick={(e) => handleCheckboxChange(item._id, e)}
+                                  />
+                                </td>
+                                <td className="p-3 text-sm">{item.title}</td>
+                                <td className="p-3 text-sm">{item.type}</td>
+                                <td className="p-3 text-sm">{item.name}</td>
+                                <td className="p-3 text-sm">{item.revision}</td>
+                                <td className="p-3 text-sm max-w-[200px] truncate">{item.description}</td>
+                                <td className="p-3 text-sm max-w-[200px] truncate">{item.revisionComment}</td>
+                                <td className="p-3 text-sm">{item.project}</td>
+                                <td className="p-3 text-sm">{item.organization}</td>
+                                <td className="p-3 text-sm">{item.owner}</td>
+                                <td className="p-3 text-sm">{item.creationDate}</td>
+                                <td className="p-3 w-20">
+                                  <div className="flex space-x-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setupEditForm(item)
+                                      }}
+                                    >
+                                      <Pencil className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={(e) => openDeleteDialog(item, e)}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Create Document Dialog */}
+      {/* Create Part Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Create Document</DialogTitle>
-            <DialogDescription>
-              Fill in the details below to create a new document. Note: The combination of Type, Name, and Revision must
-              be unique.
-            </DialogDescription>
+            <DialogTitle>Create New Part</DialogTitle>
+            <DialogDescription>Fill in the details to create a new part.</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Part title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Part type" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -540,7 +633,7 @@ const DocumentPage = () => {
                     <FormItem>
                       <FormLabel>Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document name" {...field} />
+                        <Input placeholder="Part name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -548,12 +641,12 @@ const DocumentPage = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="revision"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>Revision</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document title" {...field} />
+                        <Input placeholder="Revision number" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -567,7 +660,20 @@ const DocumentPage = () => {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Document description" className="min-h-[80px]" {...field} />
+                      <Textarea placeholder="Part description" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="revisionComment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Revision Comment</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Revision comment" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -576,28 +682,26 @@ const DocumentPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="type"
+                  name="project"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Type</FormLabel>
+                      <FormLabel>Project</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document type" {...field} />
+                        <Input placeholder="Project name" {...field} />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
-                  name="revision"
+                  name="organization"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Revision</FormLabel>
+                      <FormLabel>Organization</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document revision" {...field} />
+                        <Input placeholder="Organization name" {...field} />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -606,12 +710,12 @@ const DocumentPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="originated"
+                  name="owner"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Originated</FormLabel>
+                      <FormLabel>Owner</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input placeholder="Owner name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -619,14 +723,13 @@ const DocumentPage = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="createdAt"
+                  name="creationDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Created At</FormLabel>
+                      <FormLabel>Creation Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input type="date" placeholder="Creation date" {...field} />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1">Defaults to current date if empty</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -637,7 +740,7 @@ const DocumentPage = () => {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating..." : "Create Document"}
+                  {isSubmitting ? "Creating..." : "Create Part"}
                 </Button>
               </DialogFooter>
             </form>
@@ -645,17 +748,43 @@ const DocumentPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Document Dialog */}
+      {/* Edit Part Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit Document</DialogTitle>
-            <DialogDescription>
-              Modify the details of the document. Note: The combination of Type, Name, and Revision must be unique.
-            </DialogDescription>
+            <DialogTitle>Edit Part</DialogTitle>
+            <DialogDescription>Update the details of the selected part.</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Part title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Part type" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -664,7 +793,7 @@ const DocumentPage = () => {
                     <FormItem>
                       <FormLabel>Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document name" {...field} />
+                        <Input placeholder="Part name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -672,12 +801,12 @@ const DocumentPage = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="revision"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>Revision</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document title" {...field} />
+                        <Input placeholder="Revision number" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -691,7 +820,20 @@ const DocumentPage = () => {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Document description" className="min-h-[80px]" {...field} />
+                      <Textarea placeholder="Part description" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="revisionComment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Revision Comment</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Revision comment" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -700,28 +842,26 @@ const DocumentPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="type"
+                  name="project"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Type</FormLabel>
+                      <FormLabel>Project</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document type" {...field} />
+                        <Input placeholder="Project name" {...field} />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
-                  name="revision"
+                  name="organization"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Revision</FormLabel>
+                      <FormLabel>Organization</FormLabel>
                       <FormControl>
-                        <Input placeholder="Document revision" {...field} />
+                        <Input placeholder="Organization name" {...field} />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1">Part of unique constraint</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -730,12 +870,12 @@ const DocumentPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="originated"
+                  name="owner"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Originated</FormLabel>
+                      <FormLabel>Owner</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input placeholder="Owner name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -743,12 +883,12 @@ const DocumentPage = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="createdAt"
+                  name="creationDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Created At</FormLabel>
+                      <FormLabel>Creation Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input type="date" placeholder="Creation date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -760,7 +900,7 @@ const DocumentPage = () => {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Updating..." : "Update Document"}
+                  {isSubmitting ? "Updating..." : "Update Part"}
                 </Button>
               </DialogFooter>
             </form>
@@ -768,37 +908,21 @@ const DocumentPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Document Dialog */}
+      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Delete Document</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this document? This action cannot be undone.
+              Are you sure you want to delete this part? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            {currentDocument && (
-              <div className="bg-red-50 p-4 rounded-md border border-red-200 mb-4">
-                <p className="font-medium">You are about to delete:</p>
-                <p>
-                  <span className="font-medium">Name:</span> {currentDocument.name}
-                </p>
-                <p>
-                  <span className="font-medium">Type:</span> {currentDocument.type}
-                </p>
-                <p>
-                  <span className="font-medium">Revision:</span> {currentDocument.revision}
-                </p>
-              </div>
-            )}
-          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" variant="destructive" onClick={deleteDocument} disabled={isSubmitting}>
-              {isSubmitting ? "Deleting..." : "Delete Document"}
+            <Button type="button" variant="destructive" onClick={deletePart} disabled={isSubmitting}>
+              {isSubmitting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -807,4 +931,4 @@ const DocumentPage = () => {
   )
 }
 
-export default DocumentPage
+export default PartPage
