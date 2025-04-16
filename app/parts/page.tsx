@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -32,30 +31,30 @@ import { toast } from "@/components/ui/use-toast"
 // Interfaces for parts
 interface Part {
   _id: string
-  title: string
+  id: number
   type: string
+  title: string
   name: string
   revision: string
-  description: string
-  revisionComment: string
-  project: string
-  organization: string
+  state: string
+  created: string
+  modified: string
   owner: string
-  creationDate: string
+  organization: string
+  collabspace: string
 }
 
 // Form validation schema
 const partFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  type: z.string().min(1, "Type is required"),
-  name: z.string().min(1, "Name is required"),
+  id: z.number().optional(),
+  type: z.string().default("-"),
+  title: z.string().default("-"),
+  name: z.string().default("-"),
   revision: z.string().min(1, "Revision is required"),
-  description: z.string().optional(),
-  revisionComment: z.string().optional(),
-  project: z.string().min(1, "Project is required"),
-  organization: z.string().min(1, "Organization is required"),
-  owner: z.string().optional(),
-  creationDate: z.string().optional(),
+  state: z.string().default("-"),
+  owner: z.string().default("-"),
+  organization: z.string().default("-"),
+  collabspace: z.string().default("-"),
 })
 
 type PartFormValues = z.infer<typeof partFormSchema>
@@ -156,38 +155,41 @@ const PartPage = () => {
   const exportToPDF = () => {
     const doc = new jsPDF()
     const data = getSelectedItems().map((item) => [
-      item.title,
+      item.id,
       item.type,
+      item.title,
       item.name,
       item.revision,
-      item.description?.substring(0, 20) + (item.description?.length > 20 ? "..." : ""),
-      item.revisionComment?.substring(0, 20) + (item.revisionComment?.length > 20 ? "..." : ""),
-      item.project,
-      item.organization,
+      item.state,
+      item.created ? new Date(item.created).toLocaleDateString() : "-",
+      item.modified ? new Date(item.modified).toLocaleDateString() : "-",
       item.owner,
-      item.creationDate,
+      item.organization,
+      item.collabspace,
     ])
 
     doc.autoTable({
       head: [
         [
-          "Title",
+          "ID",
           "Type",
+          "Title",
           "Name",
           "Revision",
-          "Description",
-          "Revision Comment",
-          "Project",
-          "Organization",
+          "State",
+          "Created",
+          "Modified",
           "Owner",
-          "Creation Date",
+          "Organization",
+          "Collabspace",
         ],
       ],
       body: data,
       styles: { fontSize: 8, cellPadding: 1 },
       columnStyles: {
-        4: { cellWidth: 20 },
-        5: { cellWidth: 20 },
+        0: { cellWidth: 10 },
+        6: { cellWidth: 20 },
+        7: { cellWidth: 20 },
       },
     })
     doc.save("parts.pdf")
@@ -197,32 +199,30 @@ const PartPage = () => {
   const form = useForm<PartFormValues>({
     resolver: zodResolver(partFormSchema),
     defaultValues: {
-      title: "",
-      type: "",
-      name: "",
+      id: undefined,
+      type: "-",
+      title: "-",
+      name: "-",
       revision: "",
-      description: "",
-      revisionComment: "",
-      project: "",
-      organization: "",
-      owner: "",
-      creationDate: "",
+      state: "-",
+      owner: "-",
+      organization: "-",
+      collabspace: "-",
     },
   })
 
   // Reset form with part data for editing
   const setupEditForm = (part: Part) => {
     form.reset({
-      title: part.title,
+      id: part.id,
       type: part.type,
+      title: part.title,
       name: part.name,
       revision: part.revision,
-      description: part.description,
-      revisionComment: part.revisionComment,
-      project: part.project,
-      organization: part.organization,
+      state: part.state,
       owner: part.owner,
-      creationDate: part.creationDate,
+      organization: part.organization,
+      collabspace: part.collabspace,
     })
     setCurrentPart(part)
     setIsEditDialogOpen(true)
@@ -231,16 +231,15 @@ const PartPage = () => {
   // Open create dialog
   const openCreateDialog = () => {
     form.reset({
-      title: "",
-      type: "",
-      name: "",
+      id: undefined,
+      type: "-",
+      title: "-",
+      name: "-",
       revision: "",
-      description: "",
-      revisionComment: "",
-      project: "",
-      organization: "",
-      owner: "",
-      creationDate: new Date().toISOString().split("T")[0],
+      state: "-",
+      owner: "-",
+      organization: "-",
+      collabspace: "-",
     })
     setIsCreateDialogOpen(true)
   }
@@ -447,6 +446,16 @@ const PartPage = () => {
     }
   }
 
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-"
+    try {
+      return new Date(dateString).toLocaleDateString()
+    } catch (e) {
+      return dateString
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="p-4 space-y-4">
@@ -495,18 +504,17 @@ const PartPage = () => {
                           <th className="p-3 text-left w-10">
                             <span className="sr-only">Select</span>
                           </th>
-                          <th className="p-3 text-left font-medium text-white text-sm">Title</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">ID</th>
                           <th className="p-3 text-left font-medium text-white text-sm">Type</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Title</th>
                           <th className="p-3 text-left font-medium text-white text-sm">Name</th>
                           <th className="p-3 text-left font-medium text-white text-sm">Revision</th>
-                          <th className="p-3 text-left font-medium text-white text-sm min-w-[200px]">Description</th>
-                          <th className="p-3 text-left font-medium text-white text-sm min-w-[200px]">
-                            Revision Comment
-                          </th>
-                          <th className="p-3 text-left font-medium text-white text-sm">Project</th>
-                          <th className="p-3 text-left font-medium text-white text-sm">Organization</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">State</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Created</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Modified</th>
                           <th className="p-3 text-left font-medium text-white text-sm">Owner</th>
-                          <th className="p-3 text-left font-medium text-white text-sm">Creation Date</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Organization</th>
+                          <th className="p-3 text-left font-medium text-white text-sm">Collabspace</th>
                           <th className="p-3 text-left font-medium text-white text-sm w-20">
                             <span className="sr-only">Actions</span>
                           </th>
@@ -515,7 +523,7 @@ const PartPage = () => {
                       <tbody>
                         {parts.length === 0 ? (
                           <tr>
-                            <td colSpan={12} className="text-center p-8 text-gray-500">
+                            <td colSpan={13} className="text-center p-8 text-gray-500">
                               No parts found.
                             </td>
                           </tr>
@@ -541,16 +549,17 @@ const PartPage = () => {
                                     onClick={(e) => handleCheckboxChange(item._id, e)}
                                   />
                                 </td>
-                                <td className="p-3 text-sm">{item.title}</td>
-                                <td className="p-3 text-sm">{item.type}</td>
-                                <td className="p-3 text-sm">{item.name}</td>
-                                <td className="p-3 text-sm">{item.revision}</td>
-                                <td className="p-3 text-sm max-w-[200px] truncate">{item.description}</td>
-                                <td className="p-3 text-sm max-w-[200px] truncate">{item.revisionComment}</td>
-                                <td className="p-3 text-sm">{item.project}</td>
-                                <td className="p-3 text-sm">{item.organization}</td>
-                                <td className="p-3 text-sm">{item.owner}</td>
-                                <td className="p-3 text-sm">{item.creationDate}</td>
+                                <td className="p-3 text-sm">{item.id || "-"}</td>
+                                <td className="p-3 text-sm">{item.type || "-"}</td>
+                                <td className="p-3 text-sm">{item.title || "-"}</td>
+                                <td className="p-3 text-sm">{item.name || "-"}</td>
+                                <td className="p-3 text-sm">{item.revision || "-"}</td>
+                                <td className="p-3 text-sm">{item.state || "-"}</td>
+                                <td className="p-3 text-sm">{formatDate(item.created)}</td>
+                                <td className="p-3 text-sm">{formatDate(item.modified)}</td>
+                                <td className="p-3 text-sm">{item.owner || "-"}</td>
+                                <td className="p-3 text-sm">{item.organization || "-"}</td>
+                                <td className="p-3 text-sm">{item.collabspace || "-"}</td>
                                 <td className="p-3 w-20">
                                   <div className="flex space-x-1">
                                     <Button
@@ -600,12 +609,17 @@ const PartPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>ID</FormLabel>
                       <FormControl>
-                        <Input placeholder="Part title" {...field} />
+                        <Input
+                          type="number"
+                          placeholder="Part ID"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? Number.parseInt(e.target.value) : undefined)}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -628,6 +642,19 @@ const PartPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Part title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -639,6 +666,8 @@ const PartPage = () => {
                     </FormItem>
                   )}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="revision"
@@ -652,55 +681,14 @@ const PartPage = () => {
                     </FormItem>
                   )}
                 />
-              </div>
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Part description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="revisionComment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Revision Comment</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Revision comment" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="project"
+                  name="state"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Project</FormLabel>
+                      <FormLabel>State</FormLabel>
                       <FormControl>
-                        <Input placeholder="Project name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="organization"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Organization name" {...field} />
+                        <Input placeholder="Part state" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -723,18 +711,31 @@ const PartPage = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="creationDate"
+                  name="organization"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Creation Date</FormLabel>
+                      <FormLabel>Organization</FormLabel>
                       <FormControl>
-                        <Input type="date" placeholder="Creation date" {...field} />
+                        <Input placeholder="Organization name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="collabspace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Collabspace</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Collabspace" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancel
@@ -760,12 +761,17 @@ const PartPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>ID</FormLabel>
                       <FormControl>
-                        <Input placeholder="Part title" {...field} />
+                        <Input
+                          type="number"
+                          placeholder="Part ID"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? Number.parseInt(e.target.value) : undefined)}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -788,6 +794,19 @@ const PartPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Part title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -799,6 +818,8 @@ const PartPage = () => {
                     </FormItem>
                   )}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="revision"
@@ -812,55 +833,14 @@ const PartPage = () => {
                     </FormItem>
                   )}
                 />
-              </div>
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Part description" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="revisionComment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Revision Comment</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Revision comment" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="project"
+                  name="state"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Project</FormLabel>
+                      <FormLabel>State</FormLabel>
                       <FormControl>
-                        <Input placeholder="Project name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="organization"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Organization name" {...field} />
+                        <Input placeholder="Part state" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -883,18 +863,31 @@ const PartPage = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="creationDate"
+                  name="organization"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Creation Date</FormLabel>
+                      <FormLabel>Organization</FormLabel>
                       <FormControl>
-                        <Input type="date" placeholder="Creation date" {...field} />
+                        <Input placeholder="Organization name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="collabspace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Collabspace</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Collabspace" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   Cancel
