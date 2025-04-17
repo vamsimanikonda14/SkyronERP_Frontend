@@ -31,7 +31,7 @@ import { toast } from "@/components/ui/use-toast"
 // Interfaces for parts
 interface Part {
   _id: string
-  id: number
+  id:number
   type: string
   title: string
   name: string
@@ -199,7 +199,7 @@ const PartPage = () => {
   const form = useForm<PartFormValues>({
     resolver: zodResolver(partFormSchema),
     defaultValues: {
-      id: undefined,
+      id: 0,
       type: "-",
       title: "-",
       name: "-",
@@ -231,7 +231,7 @@ const PartPage = () => {
   // Open create dialog
   const openCreateDialog = () => {
     form.reset({
-      id: undefined,
+      id: 0,
       type: "-",
       title: "-",
       name: "-",
@@ -549,7 +549,7 @@ const PartPage = () => {
                                     onClick={(e) => handleCheckboxChange(item._id, e)}
                                   />
                                 </td>
-                                <td className="p-3 text-sm">{item.id || "-"}</td>
+                                <td className="p-3 text-sm">{item.id || 0}</td>
                                 <td className="p-3 text-sm">{item.type || "-"}</td>
                                 <td className="p-3 text-sm">{item.title || "-"}</td>
                                 <td className="p-3 text-sm">{item.name || "-"}</td>
